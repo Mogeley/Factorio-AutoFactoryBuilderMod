@@ -1,5 +1,5 @@
 {
-    "name": "AutoFacoryBuilder",
+    "name": "AutoFactoryBuilder",
     "version": "0.1.0",
     "title": "Auto Factory Builder",
     "author": "bjnoel",
@@ -7,5 +7,5 @@
     "homepage": "",
     "factorio_version": "0.16",
     "dependencies": ["base >= 0.16"],
-    "description": "This mod automatically builds and rebuilds a factoy"
+    "description": "This mod automatically builds and rebuilds a factory"
 }
