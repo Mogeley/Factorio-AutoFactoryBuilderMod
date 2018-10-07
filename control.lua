@@ -10,8 +10,48 @@
 
 -- later can try an eficiency of space 
 
-function Explore()
+local firstTick = true;
+local searchForOre = true;
+local exploreInterval = 1800; -- 1800 = 30 seconds
+local exploredArea = {{0,0}, {0,0}};
+
+-- set initial minimums for map exploration. these numbers should be increased as the factory needs more resources
+local minOilCount = 1000;
+local minIronOreCount = 10000;
+local minCopperOreCount = 10000;
+local minUraniumOreCount = 10000;
+local minCoalCount = 10000;
+local minStoneCount = 10000;
+
+
+function onTick()
+	if firstTick then
+		SetupStartingArea();
+		firstTick = false;
+	elseif event.tick % exploreInterval == 0 and searchForOre then
+		expandExploredArea();
+	end
+end
+
+function SetupStartingArea()
+	-- clear all ore in 200 x 200 area
+	ClearArea(-100, -100, 100, 100, "resource");
+end
+
+function expandExploredArea()
+	Explore(exploredArea[1][1]-100, exploredArea[1][2]-100, exploredArea[2][1]+100, exploredArea[1][1]); -- top
+	Explore(exploredArea[1][1]-100, exploredArea[1][2], exploredArea[1][1], exploredArea[2][2]); -- left
+	Explore(exploredArea[1][1], exploredArea[1][2], exploredArea[2][1]+100, exploredArea[2][2]); -- right
+	Explore(exploredArea[1][1]-100, exploredArea[2][2], exploredArea[2][1]+100, exploredArea[2][2]+100); -- bottom
+
+	exploredArea = { {exploredArea[1][1]-100, exploredArea[1][2]-100}, {exploredArea[2][1]+100, exploredArea[2][2]+100} };
+
+	searchForOre = not hasEnoughOres();
+end
+
+function Explore(x, y, x2, y2)
 	-- get known areas and expand known areas by a certain size or till a certain goal is met
+	game.player.force.chart(game.player.surface, {{x, y}, {x2, y2}});
 end
 
 function getRecipes()
@@ -21,10 +61,27 @@ function getRecipeRequirements()
 end
 
 function getResearchableTech()
-	-- get researchable technologies, ordered by most beneficial first
+	-- get researchable technologies, ordered by most beneficial first, benfit is weighted by first increased production types, then enhancements. Tech that is not researchable (research type is not produced yet) is also filtered out.
 end
 
 function startResearch()
+end
+
+function hasEnoughOres()
+	local counts = game.surfaces[1].get_resource_counts();
+	if counts["crude-oil"] < minOilCount then
+		return false;
+	if counts["iron-ore"] < minIronOreCount then
+		return false;
+	if counts["copper-ore"] < minCopperOreCount then
+		return false;
+	if counts["uranium-ore"] < minUraniumOreCount then
+		return false;
+	if counts["coal"] < minCoalCount then
+		return false;
+	if counts["stone"] < minStoneCount then
+		return false;
+	return true;
 end
 
 function ClearArea(x, y, x2, y2, type)
@@ -52,10 +109,5 @@ function getTiles(x, y, x2, y2)
 	return tiles;
 end
 
---/c for _, entity in ipairs(game.player.surface.find_entities_filtered{
---       area={{game.player.position.x-32, game.player.position.y-32},
---          {game.player.position.x+32, game.player.position.y+32}},
---           name="stone-rock"})
---do
---    entity.destroy()
---end
+-- run this every onTick event
+script.on_event(defines.events.on_tick, onTick);
