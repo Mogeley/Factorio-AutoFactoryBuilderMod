@@ -12,46 +12,51 @@
 
 local firstTick = true;
 local searchForOre = true;
-local exploreInterval = 1800; -- 1800 = 30 seconds
+local exploreInterval = 1200; -- 1800 = 30 seconds
 local exploredArea = {{0,0}, {0,0}};
 
 -- set initial minimums for map exploration. these numbers should be increased as the factory needs more resources
-local minOilCount = 1000;
-local minIronOreCount = 10000;
-local minCopperOreCount = 10000;
-local minUraniumOreCount = 10000;
-local minCoalCount = 10000;
-local minStoneCount = 10000;
+local minOilCount = 1000000;
+local minIronOreCount = 1000000;
+local minCopperOreCount = 1000000;
+local minUraniumOreCount = 1000000;
+local minCoalCount = 1000000;
+local minStoneCount = 1000000;
+local player;
 
 
-function onTick()
+function onTick(event)
 	if firstTick then
+		player = game.players[1];
+		player.print("Starting Auto Factory Builder...");
 		SetupStartingArea();
 		firstTick = false;
 	elseif event.tick % exploreInterval == 0 and searchForOre then
+		player.print("Searching for Ore...");
 		expandExploredArea();
 	end
 end
 
 function SetupStartingArea()
 	-- clear all ore in 200 x 200 area
-	ClearArea(-100, -100, 100, 100, "resource");
+	ClearArea(-512, -512, 512, 512, "resource");
 end
 
 function expandExploredArea()
-	Explore(exploredArea[1][1]-100, exploredArea[1][2]-100, exploredArea[2][1]+100, exploredArea[1][1]); -- top
-	Explore(exploredArea[1][1]-100, exploredArea[1][2], exploredArea[1][1], exploredArea[2][2]); -- left
-	Explore(exploredArea[1][1], exploredArea[1][2], exploredArea[2][1]+100, exploredArea[2][2]); -- right
-	Explore(exploredArea[1][1]-100, exploredArea[2][2], exploredArea[2][1]+100, exploredArea[2][2]+100); -- bottom
+	local size = 256;
+	Explore(exploredArea[1][1]-size, exploredArea[1][2]-size, exploredArea[2][1]+size, exploredArea[1][1]); -- top
+	Explore(exploredArea[1][1]-size, exploredArea[1][2], exploredArea[1][1], exploredArea[2][2]); -- left
+	Explore(exploredArea[1][1], exploredArea[1][2], exploredArea[2][1]+size, exploredArea[2][2]); -- right
+	Explore(exploredArea[1][1]-size, exploredArea[2][2], exploredArea[2][1]+size, exploredArea[2][2]+size); -- bottom
 
-	exploredArea = { {exploredArea[1][1]-100, exploredArea[1][2]-100}, {exploredArea[2][1]+100, exploredArea[2][2]+100} };
+	exploredArea = { {exploredArea[1][1]-size, exploredArea[1][2]-size}, {exploredArea[2][1]+size, exploredArea[2][2]+size} };
 
 	searchForOre = not hasEnoughOres();
 end
 
 function Explore(x, y, x2, y2)
 	-- get known areas and expand known areas by a certain size or till a certain goal is met
-	game.player.force.chart(game.player.surface, {{x, y}, {x2, y2}});
+	player.force.chart(player.surface, {{x, y}, {x2, y2}});
 end
 
 function getRecipes()
@@ -69,19 +74,49 @@ end
 
 function hasEnoughOres()
 	local counts = game.surfaces[1].get_resource_counts();
-	if counts["crude-oil"] < minOilCount then
+	-- wplayer.print(serpent.block(counts));
+	if not counts["crude-oil"] or (counts["crude-oil"] and counts["crude-oil"] < minOilCount) then 
+		--player.print(counts["crude-oil"]);
+		player.print("Not Enough Oil...");
 		return false;
-	if counts["iron-ore"] < minIronOreCount then
+	elseif not counts["iron-ore"] or (counts["iron-ore"] and counts["iron-ore"] < minIronOreCount) then
+		--player.print(counts["iron-ore"]);
+		player.print("Not Enough Iron Ore...");
 		return false;
-	if counts["copper-ore"] < minCopperOreCount then
+	elseif not counts["copper-ore"] or (counts["copper-ore"] and counts["copper-ore"] < minCopperOreCount) then
+		--player.print(counts["copper-ore"]);
+		player.print("Not Enough Copper Ore...");
 		return false;
-	if counts["uranium-ore"] < minUraniumOreCount then
+	elseif not counts["uranium-ore"] or (counts["uranium-ore"] and counts["uranium-ore"] < minUraniumOreCount) then
+		--player.print(counts["uranium-ore"]);
+		player.print("Not Enough Uranium Ore...");
 		return false;
-	if counts["coal"] < minCoalCount then
+	elseif not counts["coal"] or (counts["coal"] and counts["coal"] < minCoalCount) then
+		--player.print(counts["coal"]);
+		player.print("Not Enough Coal...");
 		return false;
-	if counts["stone"] < minStoneCount then
+	elseif not counts["stone"] or (counts["stone"] and counts["stone"] < minStoneCount) then
+		--player.print(counts["stone"]);
+		player.print("Not Enough Stone...");
 		return false;
+	end
 	return true;
+
+
+	--if counts["crude-oil"] < minOilCount then
+	--	return false;
+	--elseif counts["iron-ore"] < minIronOreCount then
+	--	return false;
+	--elseif counts["copper-ore"] < minCopperOreCount then
+	--	return false;
+	--elseif counts["uranium-ore"] < minUraniumOreCount then
+	--	return false;
+	--elseif counts["coal"] < minCoalCount then
+	--	return false;
+	--elseif counts["stone"] < minStoneCount then
+	--	return false;
+	--end
+	--return true;
 end
 
 function ClearArea(x, y, x2, y2, type)
@@ -92,10 +127,11 @@ function ClearArea(x, y, x2, y2, type)
 end
 
 function getItemsInArea(x, y, x2, y2, type)
-	if type == "player" do
+	if type == "player" then
 		return game.player.surface.find_entities({{x, y}, {x2, y2}});
-	else if type == "resource" do
+	elseif type == "resource" then
 		return game.surfaces[1].find_entities_filtered{area = {{x, y}, {x2, y2}}, type= "resource"}
+	end
 	return game.surfaces[1].find_entities({{x, y}, {x2, y2}});
 end
 
