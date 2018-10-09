@@ -1,7 +1,7 @@
 $info = (Get-Content info.json) -join "`n" | ConvertFrom-Json
 $version = $info.version
 
-$filename = "AutoFactoryBuilder$version"
+$filename = "AutoFactoryBuilder_$version"
 
 $exclude = @("build.ps1",".gitignore","*.zip","AutoFactoryBuilder*")
 
