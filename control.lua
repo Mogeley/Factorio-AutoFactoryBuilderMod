@@ -12,7 +12,9 @@
 
 local firstTick = true;
 local searchForOre = true;
+local checkNeeds = true;
 local exploreInterval = 1200; -- 1800 = 30 seconds
+local needsInterval = 600;
 local exploredArea = {{0,0}, {0,0}};
 
 -- set initial minimums for map exploration. these numbers should be increased as the factory needs more resources
@@ -31,9 +33,17 @@ function onTick(event)
 		player.print("Starting Auto Factory Builder...");
 		SetupStartingArea();
 		firstTick = false;
-	elseif event.tick % exploreInterval == 0 and searchForOre then
-		player.print("Searching for Ore...");
-		expandExploredArea();
+		--getRecipes();
+		getResearchableTech();
+	else
+		if event.tick % exploreInterval == 0 and searchForOre then
+			player.print("Searching for Ore...");
+			expandExploredArea();
+		end
+		if event.tick % needsInterval == 0 and checkNeeds then
+			
+			checkNeeds = false;
+		end
 	end
 end
 
@@ -60,13 +70,34 @@ function Explore(x, y, x2, y2)
 end
 
 function getRecipes()
+	-- https://lua-api.factorio.com/latest/LuaForce.html#LuaForce.recipes 
+	-- https://lua-api.factorio.com/latest/LuaRecipe.html
+	for _, recipe in pairs(player.force.recipes) do
+		if recipe.enabled then
+			player.print(recipe.name);
+		end
+	end
 end
 
 function getRecipeRequirements()
 end
 
 function getResearchableTech()
+	-- https://lua-api.factorio.com/latest/LuaForce.html#LuaForce.technologies 
+	-- https://lua-api.factorio.com/latest/LuaTechnology.html
 	-- get researchable technologies, ordered by most beneficial first, benfit is weighted by first increased production types, then enhancements. Tech that is not researchable (research type is not produced yet) is also filtered out.
+	local i = 1;
+	for _, technology in pairs(player.force.technologies) do
+		if i <= 5 then
+			player.print(technology.name);
+			if technology.enabled == true and technology.researched == false then -- enabled = can be researched
+				--player.print(technology.enabled);
+				--player.print(technology.researched);
+				--player.print(technology.order);	
+				i = i + 1;
+			end
+		end
+	end
 end
 
 function startResearch()
@@ -101,22 +132,6 @@ function hasEnoughOres()
 		return false;
 	end
 	return true;
-
-
-	--if counts["crude-oil"] < minOilCount then
-	--	return false;
-	--elseif counts["iron-ore"] < minIronOreCount then
-	--	return false;
-	--elseif counts["copper-ore"] < minCopperOreCount then
-	--	return false;
-	--elseif counts["uranium-ore"] < minUraniumOreCount then
-	--	return false;
-	--elseif counts["coal"] < minCoalCount then
-	--	return false;
-	--elseif counts["stone"] < minStoneCount then
-	--	return false;
-	--end
-	--return true;
 end
 
 function ClearArea(x, y, x2, y2, type)
