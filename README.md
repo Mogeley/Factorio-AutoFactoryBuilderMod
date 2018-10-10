@@ -1,2 +1,2 @@
-# Factorio-AutoFactoryBuilderMod
-Auto Factoory Builder mod for Factorio
+# Factorio-Auto Factory Builder
+Auto Factory Builder for Factorio
