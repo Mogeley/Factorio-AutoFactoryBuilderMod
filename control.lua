@@ -89,7 +89,7 @@ function getResearchableTech()
 	local i = 1;
 	for _, technology in pairs(player.force.technologies) do
 		if i <= 5 then
-			player.print(technology.name);
+			player.print(technology.name.." "..(technology.enabled and 'true' or 'false').." "..(technology.researched and 'true' or 'false').." "..(technology.valid and 'true' or 'false'));
 			if technology.enabled == true and technology.researched == false then -- enabled = can be researched
 				--player.print(technology.enabled);
 				--player.print(technology.researched);
