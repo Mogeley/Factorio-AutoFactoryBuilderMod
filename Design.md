@@ -35,7 +35,7 @@ Note - the AI currently does not consider resources for building structures. A s
 1. Overall logic
   1. Save layout pattern with monitoring results and score
   1. make new guesses
-  1. wipe factory and start with new guesses
+  1. wipe factory and start with new guesses (choose one item to iterate on if possible)
   1. Monitor
   1. Is the result better / worse
 
