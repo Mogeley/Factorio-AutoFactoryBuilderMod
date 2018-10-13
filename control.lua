@@ -1,3 +1,6 @@
+-- Logger Usage see: https://github.com/rxi/log.lua
+require 'stdlib/log/logger';
+LOGGER = Logger.new('AutoFactoryBuilder', 'AutoFactoryBuilder', true);
 
 -- need way to determine "need" for each resource
 -- need iterative method to determine "effectiveness", "eficiency", "resource need" of resource production and transportation layout
@@ -26,18 +29,20 @@ local minCoalCount = 1000000;
 local minStoneCount = 1000000;
 local player;
 
+local recipes;
+
 
 function onTick(event)
 	if firstTick then
 		player = game.players[1];
-		player.print("Starting Auto Factory Builder...");
+		debug("Starting Auto Factory Builder...");
 		SetupStartingArea();
 		firstTick = false;
-		--getRecipes();
+		recipes = getRecipes();
 		getResearchableTech();
 	else
 		if event.tick % exploreInterval == 0 and searchForOre then
-			player.print("Searching for Ore...");
+			debug("Searching for Ore...");
 			expandExploredArea();
 		end
 		if event.tick % needsInterval == 0 and checkNeeds then
@@ -45,6 +50,15 @@ function onTick(event)
 			checkNeeds = false;
 		end
 	end
+end
+
+function onResesarchFinish(event)
+	recipes = getRecipes();
+end
+
+function debug(msg)
+	player.print(msg);
+	LOGGER.log(msg);
 end
 
 function SetupStartingArea()
@@ -72,11 +86,14 @@ end
 function getRecipes()
 	-- https://lua-api.factorio.com/latest/LuaForce.html#LuaForce.recipes 
 	-- https://lua-api.factorio.com/latest/LuaRecipe.html
+	local result = {};
 	for _, recipe in pairs(player.force.recipes) do
 		if recipe.enabled then
-			player.print(recipe.name);
+			debug("Recipe: "..recipe.name);
+			table.insert(result, recipe);
 		end
 	end
+	return result;
 end
 
 function getRecipeRequirements()
@@ -88,14 +105,11 @@ function getResearchableTech()
 	-- get researchable technologies, ordered by most beneficial first, benfit is weighted by first increased production types, then enhancements. Tech that is not researchable (research type is not produced yet) is also filtered out.
 	local i = 1;
 	for _, technology in pairs(player.force.technologies) do
-		if i <= 5 then
-			player.print(technology.name.." "..(technology.enabled and 'true' or 'false').." "..(technology.researched and 'true' or 'false').." "..(technology.valid and 'true' or 'false'));
-			if technology.enabled == true and technology.researched == false then -- enabled = can be researched
-				--player.print(technology.enabled);
-				--player.print(technology.researched);
-				--player.print(technology.order);	
-				i = i + 1;
-			end
+		debug("Technology: "..technology.name..", Enabled: "..(technology.enabled and 'true' or 'false')..", Researched: "..(technology.researched and 'true' or 'false')..", Valid: "..(technology.valid and 'true' or 'false'));
+		if technology.enabled == true and technology.researched == false then -- enabled = can be researched
+			--debug(technology.enabled);
+			--debug(technology.researched);
+			--debug(technology.order);	
 		end
 	end
 end
@@ -105,30 +119,30 @@ end
 
 function hasEnoughOres()
 	local counts = game.surfaces[1].get_resource_counts();
-	-- wplayer.print(serpent.block(counts));
+	-- debug(serpent.block(counts));
 	if not counts["crude-oil"] or (counts["crude-oil"] and counts["crude-oil"] < minOilCount) then 
-		--player.print(counts["crude-oil"]);
-		player.print("Not Enough Oil...");
+		--debug(counts["crude-oil"]);
+		debug("Not Enough Oil...");
 		return false;
 	elseif not counts["iron-ore"] or (counts["iron-ore"] and counts["iron-ore"] < minIronOreCount) then
-		--player.print(counts["iron-ore"]);
-		player.print("Not Enough Iron Ore...");
+		--debug(counts["iron-ore"]);
+		debug("Not Enough Iron Ore...");
 		return false;
 	elseif not counts["copper-ore"] or (counts["copper-ore"] and counts["copper-ore"] < minCopperOreCount) then
-		--player.print(counts["copper-ore"]);
-		player.print("Not Enough Copper Ore...");
+		--debug(counts["copper-ore"]);
+		debug("Not Enough Copper Ore...");
 		return false;
 	elseif not counts["uranium-ore"] or (counts["uranium-ore"] and counts["uranium-ore"] < minUraniumOreCount) then
-		--player.print(counts["uranium-ore"]);
-		player.print("Not Enough Uranium Ore...");
+		--debug(counts["uranium-ore"]);
+		debug("Not Enough Uranium Ore...");
 		return false;
 	elseif not counts["coal"] or (counts["coal"] and counts["coal"] < minCoalCount) then
-		--player.print(counts["coal"]);
-		player.print("Not Enough Coal...");
+		--debug(counts["coal"]);
+		debug("Not Enough Coal...");
 		return false;
 	elseif not counts["stone"] or (counts["stone"] and counts["stone"] < minStoneCount) then
-		--player.print(counts["stone"]);
-		player.print("Not Enough Stone...");
+		--debug(counts["stone"]);
+		debug("Not Enough Stone...");
 		return false;
 	end
 	return true;
