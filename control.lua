@@ -38,8 +38,13 @@ function onTick(event)
 		debug("Starting Auto Factory Builder...");
 		SetupStartingArea();
 		firstTick = false;
-		recipes = getRecipes();
-		getResearchableTech();
+		--recipes = getRecipes();
+		--getResearchableTech();
+		local results = getRecipeRequirements("express-splitter", {});
+		debug("Recipe Requirements Results: ");
+		for _, result in pairs(results) do
+			debug("Name: "..result.name.." Type: "..result.type.." Total: "..result.amount.." isRawResource: "..(result.isRawResource ? 'true' : 'false').." isEnabled: "..(result.isEnabled ? 'true' : 'false'));
+		end
 	else
 		if event.tick % exploreInterval == 0 and searchForOre then
 			debug("Searching for Ore...");
@@ -96,14 +101,71 @@ function getRecipes()
 	return result;
 end
 
-function getRecipeRequirements()
+function getRecipe(recipeName)
+	return player.force.recipes[recipeName];
+end
+
+function getRecipeRequirements(recipeName, resources)
+	debug("Getting Recipe Requirements For: "..recipeName);
+	local recipe = getRecipe(recipeName);
+	if recipe ~= nil then
+		for _, ingredient in pairs(recipe.ingredients) do
+			local item = {
+				type = ingredient.type,
+				name = ingredient.name,
+				amount = ingredient.amount,
+				isRawResource = isItemRawResource(ingredient.name),
+				isEnabled = isRecipeEnabled(ingredient.name)
+			};
+			local resourceExists = false;
+			local resourceIndex = 0;
+
+			-- does resources table contain the ingredient? 
+			for index, resource in pairs(resources) do
+				if resource.name == ingredient.name then
+					-- update table
+					resourceExists = true;
+
+					item.amount = resources[index].amount + item.amount;
+					resources[index] = item;
+					break
+				end
+			end
+			if not resourceExists then
+				-- insert into table
+				table.insert(resources, item);
+			end
+
+			if getRecipe(ingredient.name) ~= nill then
+				resources = getRecipeRequirements(ingredient.name, resources);
+			end
+		end
+	end
+	return resources;
+end
+
+function isItemRawResource(itemName)
+	if getRecipe(itemName) == nil then
+		--debug("isItemRawResource: "..itemName..": true");
+		return true;
+	end
+	--debug("isItemRawResource: "..itemName..": false");
+
+	return false;
+end
+
+function isRecipeEnabled(recipeName)
+	local recipe = getRecipe(recipeName);
+	if recipe ~= nil then
+		return recipe.enabled;
+	end
+	return false;
 end
 
 function getResearchableTech()
 	-- https://lua-api.factorio.com/latest/LuaForce.html#LuaForce.technologies 
 	-- https://lua-api.factorio.com/latest/LuaTechnology.html
 	-- get researchable technologies, ordered by most beneficial first, benfit is weighted by first increased production types, then enhancements. Tech that is not researchable (research type is not produced yet) is also filtered out.
-	local i = 1;
 	for _, technology in pairs(player.force.technologies) do
 		debug("Technology: "..technology.name..", Enabled: "..(technology.enabled and 'true' or 'false')..", Researched: "..(technology.researched and 'true' or 'false')..", Valid: "..(technology.valid and 'true' or 'false'));
 		if technology.enabled == true and technology.researched == false then -- enabled = can be researched
