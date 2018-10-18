@@ -40,10 +40,10 @@ function onTick(event)
 		firstTick = false;
 		--recipes = getRecipes();
 		--getResearchableTech();
-		local results = getRecipeRequirements("express-splitter", {});
+		local results = getRecipeRequirements("express-splitter", {}, 1);
 		debug("Recipe Requirements Results: ");
 		for _, result in pairs(results) do
-			debug("Name: "..result.name.." Type: "..result.type.." Total: "..result.amount.." isRawResource: "..(result.isRawResource ? 'true' : 'false').." isEnabled: "..(result.isEnabled ? 'true' : 'false'));
+			debug("Name: "..result.name.." Type: "..result.type.." Total: "..result.amount.." isRawResource: "..(result.isRawResource and 'true' or 'false').." isEnabled: "..(result.isEnabled  and 'true' or 'false'));
 		end
 	else
 		if event.tick % exploreInterval == 0 and searchForOre then
@@ -105,15 +105,17 @@ function getRecipe(recipeName)
 	return player.force.recipes[recipeName];
 end
 
-function getRecipeRequirements(recipeName, resources)
+function getRecipeRequirements(recipeName, resources, step)
 	debug("Getting Recipe Requirements For: "..recipeName);
 	local recipe = getRecipe(recipeName);
 	if recipe ~= nil then
 		for _, ingredient in pairs(recipe.ingredients) do
+			debug("Recipe: "..recipeName.." Needs: "..ingredient.name.." Amount: "..ingredient.amount);
 			local item = {
 				type = ingredient.type,
 				name = ingredient.name,
 				amount = ingredient.amount,
+				step = step,
 				isRawResource = isItemRawResource(ingredient.name),
 				isEnabled = isRecipeEnabled(ingredient.name)
 			};
@@ -137,7 +139,7 @@ function getRecipeRequirements(recipeName, resources)
 			end
 
 			if getRecipe(ingredient.name) ~= nill then
-				resources = getRecipeRequirements(ingredient.name, resources);
+				resources = getRecipeRequirements(ingredient.name, resources, step+1);
 			end
 		end
 	end
