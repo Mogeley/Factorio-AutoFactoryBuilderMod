@@ -17,7 +17,9 @@ local firstTick = true;
 local searchForOre = true;
 local checkNeeds = true;
 local exploreInterval = 1200; -- 1800 = 30 seconds
-local needsInterval = 600;
+local exploreTick = exploreInterval;
+local buildTick = 600;
+local build = true;
 local exploredArea = {{0,0}, {0,0}};
 
 -- set initial minimums for map exploration. these numbers should be increased as the factory needs more resources
@@ -31,28 +33,274 @@ local player;
 
 local recipes;
 
+local beltRate = {}; -- items per minute
+beltRate["transport-belt"] = 800;
+beltRate["fast-transport-belt"] = 1600;
+beltRate["express-transport-belt"] = 2400;
+
+local assemblerSpeed = {};
+assemblerSpeed["assembling-machine-1"] = 0.5;
+assemblerSpeed["assembling-machine-2"] = 0.75;
+assemblerSpeed["assembling-machine-3"] = 1.25;
+assemblerSpeed["stone-furnace"] = 1.0;
+assemblerSpeed["steel-furnace"] = 2.0;
+assemblerSpeed["electric-furnace"] = 2.0;
+assemblerSpeed["centrifuge"] = 0.75;
+assemblerSpeed["chemical-plant"] = 1.25;
+assemblerSpeed["oil-refinery"] = 1.0;
+assemblerSpeed["rocket-silo"] = 1.0;
+
 
 function onTick(event)
 	if firstTick then
 		player = game.players[1];
 		debug("Starting Auto Factory Builder...");
-		SetupStartingArea();
+		--SetupStartingArea();
 		firstTick = false;
+
 		recipes = getRecipes();
-		getResearchableTech();
+		--getResearchableTech();
 	else
-		if event.tick % exploreInterval == 0 and searchForOre then
+		if event.tick > exploreTick and searchForOre then
 			debug("Searching for Ore...");
 			expandExploredArea();
+			exploreTick = exploreTick + exploreInterval;
 		end
-		if event.tick % needsInterval == 0 and checkNeeds then
-			
-			checkNeeds = false;
+		if event.tick > buildTick and build then
+			newSaturatedBelt(getRecipe("solar-panel"), "transport-belt", {100,0}, defines.direction.west);
+			build = false;
 		end
 	end
 end
 
-function onResesarchFinish(event)
+function newSaturatedBelt(recipe, beltName, beltEndPosition, beltDirection)
+	-- determine items per minute to saturate belt
+	local saturatedItemRate = beltRate[beltName];
+	local bestCrafterType = "";
+
+	-- determine number of assemblers, smelters, miners, trains, or rockets needed to meet the needed rate
+	if recipe.category == "crafting" or recipe.category == "advanced-crafting" or recipe.category == "crafting-with-fluid" then
+		bestCrafterType = getBestAvailableAssembler();
+	elseif recipe.category == "smelting" then
+		bestCrafterType = getBestAvailableSmelter();	
+	elseif recipe.category == "chemistry" then
+		bestCrafterType = "chemical-plant";
+	elseif recipe.category == "oil-processing" then
+		bestCrafterType = "oil-refinery";
+	elseif recipe.category == "rocket-building" then
+		bestCrafterType = "rocket-silo";
+	elseif recipe.category == "centrifuging" then
+		bestCrafterType = "centrifuge";
+	end
+
+	local itemRate = 60 / recipe.energy / assemblerSpeed[bestCrafterType]; -- items/minute
+	local numberOfCrafters = roundUp(saturatedItemRate / itemRate);
+
+	-- get ingredients
+	local ingredients = recipe.ingredients;
+
+	-- calculate the number of crafters in a row can be placed before items on supply belt are used
+	local crafterDepth = 1000;
+	for _, ingredient in pairs(ingredients) do
+		ingredientsPerMinute = itemRate * ingredient.amount;
+		local temp = math.floor(saturatedItemRate / ingredientsPerMinute);
+		if temp < crafterDepth then -- crafterDepth is the maximum number of crafters that can be built in a row per saturated belt.
+			crafterDepth = temp;
+		end
+	end
+	local crafterWidth = roundUp(numberOfCrafters / (crafterDepth * 2));
+
+	SetupCrafterLayout(recipe, beltName, beltEndPosition, beltDirection);
+
+	-- create output belts bus to end position and direction
+end
+
+function SetupCrafterLayout(recipe, beltName, beltEndPosition, beltDirection)
+	local width = getEntityWidth(recipe.name);
+	local heigth = getEntityHeight(recipe.name);
+
+	local x_offset = 0;
+	local y_offset = 0;
+	local x_column_offset = 0;
+	local y_column_offset = 0;
+	local beltLength = width + 4;
+	local crafterLength = width;
+	local beltDirectionLeft;
+	local beltDirectionRight;
+	if beltDirection == defines.direction.north then
+		x_column_offset = 1;
+		y_offset = -1;
+		beltLength = heigth + 4;
+		crafterLength = height;
+		beltDirectionLeft = defines.direction.west;
+		beltDirectionRight = defines.direction.east;
+	elseif beltDirection == defines.direction.south then
+		x_column_offset = 1;
+		y_offset = 1;
+		beltLength = heigth + 4;
+		crafterLength = height;
+		beltDirectionLeft = defines.direction.east;
+		beltDirectionRight = defines.direction.west;
+	elseif beltDirection == defines.direction.east then
+		y_column_offset = 1;
+		x_offset = -1;
+		beltDirectionLeft = defines.direction.north;
+		beltDirectionRight = defines.direction.south;
+	elseif beltDirection == defines.direction.west then
+		y_column_offset = 1;
+		x_offset = 1;
+		beltDirectionLeft = defines.direction.south;
+		beltDirectionRight = defines.direction.north;
+	end
+
+	-- start with output belt, then put crafters on each side
+	for l=0, beltLength, 1 do
+		game.surfaces[1].create_entity({name=beltName, position={beltEndPosition.x+l*x_offset,beltEndPosition.y+l*y_offset}, direction=beltDirection, force="player" });
+	end
+
+	
+
+	if string.match(recipe.name, "assembling-machine") or recipe.name == "electric-furnace" then
+		local beltpos = 2;
+		for _, ingredient in pairs(recipe.ingredients) do
+			if ingredient.type == "item" then
+				if beltpos > 4 then -- full belts
+					for l=0, beltLength, 1 do
+						-- left side
+						game.surfaces[1].create_entity({
+							name=beltName, 
+							position={beltEndPosition.x+l*x_offset-beltpos*x_column_offset,beltEndPosition.y+l*y_offset-beltpos*y_column_offset}, 
+							direction=beltDirection, 
+							force="player" 
+						});
+
+						-- right side
+						game.surfaces[1].create_entity({
+							name=beltName, 
+							position={beltEndPosition.x+l*x_offset+beltpos*x_column_offset,beltEndPosition.y+l*y_offset+beltpos*y_column_offset}, 
+							direction=beltDirection, 
+							force="player" 
+						});
+					end
+					-- inserters
+					-- input inserter
+
+					
+				else -- underground belts
+					-- left side
+					-- input
+					game.surfaces[1].create_entity({
+						name=undergroundBeltName, 
+						position={beltEndPosition.x+beltLength*x_offset-beltpos*x_column_offset,beltEndPosition.y+beltLength*y_offset-beltpos*y_column_offset}, 
+						direction=beltDirection,
+						force="player" 
+					});
+					-- output
+					game.surfaces[1].create_entity({
+						name=undergroundBeltName, 
+						position={beltEndPosition.x-beltpos*x_column_offset,beltEndPosition.y-beltpos*y_column_offset}, 
+						direction=beltDirection,
+						force="player" 
+					});
+					game.surfaces[1].create_entity({
+						name="stack-inserter", 
+						position={beltEndPosition.x+(2+crafterLength)*x_offset-beltpos*x_column_offset,beltEndPosition.y+(2+crafterLength)*y_offset-beltpos*y_column_offset}, 
+						direction=beltDirection,
+						force="player" 
+					});
+
+					-- right side
+					-- input
+					game.surfaces[1].create_entity({
+						name=undergroundBeltName, 
+						position={beltEndPosition.x+beltLength*x_offset+beltpos*x_column_offset,beltEndPosition.y+beltLength*y_offset+beltpos*y_column_offset}, 
+						direction=beltDirection,
+						force="player" 
+					});
+					-- output
+					game.surfaces[1].create_entity({
+						name=undergroundBeltName, 
+						position={beltEndPosition.x+beltpos*x_column_offset,beltEndPosition.y+beltpos*y_column_offset}, 
+						direction=beltDirection,
+						force="player" 
+					});
+					game.surfaces[1].create_entity({
+						name="stack-inserter", 
+						position={beltEndPosition.x+(2+crafterLength)*x_offset+beltpos*x_column_offset,beltEndPosition.y+(2+crafterLength)*y_offset+beltpos*y_column_offset}, 
+						direction=beltDirection,
+						force="player" 
+					});
+				end
+
+				beltpos = beltpos + 1;
+				if beltpos == 5 then
+					beltpos = 6;
+				end
+			else
+			end
+		end
+
+		-- output inserters
+		-- left
+		game.surfaces[1].create_entity({
+			name="stack-inserter", 
+			position={beltEndPosition.x+2*x_offset-1*x_column_offset,beltEndPosition.y+2*y_offset-1*y_column_offset}, 
+			direction=beltDirectionRight, 
+			force="player" 
+		});
+		game.surfaces[1].create_entity({
+			name="stack-inserter", 
+			position={beltEndPosition.x+2*x_offset+1*x_column_offset,beltEndPosition.y+2*y_offset+1*y_column_offset}, 
+			direction=beltDirectionLeft, 
+			force="player" 
+		});
+		-- right
+	elseif string.match(recipe.name, "furnace") then
+	elseif recipe.name == "oil-refinery" then
+	elseif recipe.name == "chemical-plant" then
+	elseif recipe.name == "rocket-silo" then
+    end
+end
+
+function getBestAvailableAssembler()
+	for _, recipe in pairs(recipes) do
+		if recipe.name == "assembling-machine-3" then 
+			return "assembling-machine-3";
+		elseif recipe.name == "assembling-machine-2" then
+			return "assembling-machine-2";
+		elseif recipe.name == "assembling-machine-1" then
+			return "assembling-machine-1";
+		end
+	end
+	return "assembling-machine-1";
+end
+
+function getBestAvailableSmelter()
+	for _, recipe in pairs(recipes) do
+		if recipe.name == "electric-furnace" then 
+			return "electric-furnace";
+		elseif recipe.name == "steel-furnace" then
+			return "steel-furnace";
+		elseif recipe.name == "stone-furnace" then
+			return "stone-furnace";
+		end
+	end
+	return "stone-furnace";
+end
+
+function EntityPrototype(entityName)
+	return game.entity_prototypes[1][entityName];
+end
+
+function getEntityWidth(entityName)
+	return math.abs(EntityPrototype(entityName).drawing_box.left_top.x - EntityPrototype(entityName).drawing_box.bottom_right.x);
+end
+
+function getEntityHeight(entityName)
+	return math.abs(EntityPrototype(entityName).drawing_box.left_top.y - EntityPrototype(entityName).drawing_box.bottom_right.y);
+end
+
+function onResearchFinish(event)	
 	recipes = getRecipes();
 end
 
@@ -88,12 +336,24 @@ function getRecipes()
 	-- https://lua-api.factorio.com/latest/LuaRecipe.html
 	local result = {};
 	for _, recipe in pairs(player.force.recipes) do
+		debug("Recipe: "..recipe.name.." Category: "..recipe.category);
 		if recipe.enabled then
-			debug("Recipe: "..recipe.name);
 			table.insert(result, recipe);
 		end
 	end
 	return result;
+end
+
+function getRecipe(recipeName)
+	-- https://lua-api.factorio.com/latest/LuaForce.html#LuaForce.recipes 
+	-- https://lua-api.factorio.com/latest/LuaRecipe.html
+	local result = {};
+	for _, recipe in pairs(player.force.recipes) do
+		if recipe.name == recipeName then
+			return recipe;	
+		end
+	end
+	return nil;
 end
 
 function getRecipeRequirements()
@@ -172,6 +432,13 @@ function getTiles(x, y, x2, y2)
 		end
 	end
 	return tiles;
+end
+
+function roundUp(value)
+	if math.fmod(value,1) > 0 then
+		value = value + 1;
+	end
+	return math.floor(value);
 end
 
 -- run this every onTick event
