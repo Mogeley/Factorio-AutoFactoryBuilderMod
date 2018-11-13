@@ -363,7 +363,6 @@ function getResearchableTech()
 	-- https://lua-api.factorio.com/latest/LuaForce.html#LuaForce.technologies 
 	-- https://lua-api.factorio.com/latest/LuaTechnology.html
 	-- get researchable technologies, ordered by most beneficial first, benfit is weighted by first increased production types, then enhancements. Tech that is not researchable (research type is not produced yet) is also filtered out.
-	local i = 1;
 	for _, technology in pairs(player.force.technologies) do
 		debug("Technology: "..technology.name..", Enabled: "..(technology.enabled and 'true' or 'false')..", Researched: "..(technology.researched and 'true' or 'false')..", Valid: "..(technology.valid and 'true' or 'false'));
 		if technology.enabled == true and technology.researched == false then -- enabled = can be researched
