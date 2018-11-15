@@ -1,6 +1,8 @@
 -- Logger Usage see: https://github.com/rxi/log.lua
 require 'stdlib/log/logger';
-LOGGER = Logger.new('AutoFactoryBuilder', 'AutoFactoryBuilder', true);
+require 'direction';
+
+LOGGER = Logger.new('AutoFactoryBuilder', 'AutoFactoryBuilder', true); 
 
 -- need way to determine "need" for each resource
 -- need iterative method to determine "effectiveness", "eficiency", "resource need" of resource production and transportation layout
@@ -58,7 +60,6 @@ function onTick(event)
 		--SetupStartingArea();
 		firstTick = false;
 
-		recipes = getRecipes();
 		--getResearchableTech();
 	else
 		if event.tick > exploreTick and searchForOre then
@@ -67,7 +68,8 @@ function onTick(event)
 			exploreTick = exploreTick + exploreInterval;
 		end
 		if event.tick > buildTick and build then
-			newSaturatedBelt(getRecipe("solar-panel"), "transport-belt", {100,0}, defines.direction.west);
+			recipes = getRecipes();
+			newSaturatedBelt(getRecipe("satellite"), "transport-belt", {x=0,y=0}, defines.direction.west);
 			build = false;
 		end
 	end
@@ -80,9 +82,9 @@ function newSaturatedBelt(recipe, beltName, beltEndPosition, beltDirection)
 
 	-- determine number of assemblers, smelters, miners, trains, or rockets needed to meet the needed rate
 	if recipe.category == "crafting" or recipe.category == "advanced-crafting" or recipe.category == "crafting-with-fluid" then
-		bestCrafterType = getBestAvailableAssembler();
+		bestCrafterType = getBestAvailableAssembler(recipe);
 	elseif recipe.category == "smelting" then
-		bestCrafterType = getBestAvailableSmelter();	
+		bestCrafterType = getBestAvailableSmelter(recipe);	
 	elseif recipe.category == "chemistry" then
 		bestCrafterType = "chemical-plant";
 	elseif recipe.category == "oil-processing" then
@@ -110,61 +112,73 @@ function newSaturatedBelt(recipe, beltName, beltEndPosition, beltDirection)
 	end
 	local crafterWidth = roundUp(numberOfCrafters / (crafterDepth * 2));
 
-	SetupCrafterLayout(recipe, beltName, beltEndPosition, beltDirection);
+	SetupCrafterLayout(recipe, bestCrafterType, beltName, beltEndPosition, beltDirection);
 
 	-- create output belts bus to end position and direction
 end
 
-function SetupCrafterLayout(recipe, beltName, beltEndPosition, beltDirection)
-	local width = getEntityWidth(recipe.name);
-	local heigth = getEntityHeight(recipe.name);
+function SetupCrafterLayout(recipe, craftingMachineName, beltName, beltEndPosition, beltDirection)
+	local width = getEntityWidth(craftingMachineName);
+	local heigth = getEntityHeight(craftingMachineName);
+	local beltsNeeded = getNumberofBeltsNeeded(recipe);
 
 	local x_offset = 0;
 	local y_offset = 0;
 	local x_column_offset = 0;
 	local y_column_offset = 0;
-	local beltLength = width + 4;
+	local beltLength = width + 2;
 	local crafterLength = width;
-	local beltDirectionLeft;
-	local beltDirectionRight;
 	if beltDirection == defines.direction.north then
 		x_column_offset = 1;
 		y_offset = -1;
-		beltLength = heigth + 4;
+		beltLength = heigth + 2;
 		crafterLength = height;
-		beltDirectionLeft = defines.direction.west;
-		beltDirectionRight = defines.direction.east;
 	elseif beltDirection == defines.direction.south then
 		x_column_offset = 1;
 		y_offset = 1;
-		beltLength = heigth + 4;
+		beltLength = heigth + 2;
 		crafterLength = height;
-		beltDirectionLeft = defines.direction.east;
-		beltDirectionRight = defines.direction.west;
 	elseif beltDirection == defines.direction.east then
 		y_column_offset = 1;
 		x_offset = -1;
-		beltDirectionLeft = defines.direction.north;
-		beltDirectionRight = defines.direction.south;
 	elseif beltDirection == defines.direction.west then
 		y_column_offset = 1;
 		x_offset = 1;
-		beltDirectionLeft = defines.direction.south;
-		beltDirectionRight = defines.direction.north;
 	end
+	local undergroundBeltName = getUndergroundBeltNameFromBeltName(beltName);
 
 	-- start with output belt, then put crafters on each side
 	for l=0, beltLength, 1 do
 		game.surfaces[1].create_entity({name=beltName, position={beltEndPosition.x+l*x_offset,beltEndPosition.y+l*y_offset}, direction=beltDirection, force="player" });
 	end
 
-	
+	if craftingMachineName == "electric-furnace"
+		or craftingMachineName == "assembling-machine-1"
+		or craftingMachineName == "assembling-machine-2"
+		or craftingMachineName == "assembling-machine-3" then
 
-	if string.match(recipe.name, "assembling-machine") or recipe.name == "electric-furnace" then
-		local beltpos = 2;
+		-- Left Assembler 
+		game.surfaces[1].create_entity({
+			name=craftingMachineName, 
+			position={beltEndPosition.x+2*x_offset-(1+crafterLength)*x_column_offset,beltEndPosition.y+2*y_offset-(1+crafterLength)*y_column_offset}, 
+			direction=beltDirection,
+			recipe=recipe.name, 
+			force="player" 
+		});
+
+		-- Right Assembler 
+		game.surfaces[1].create_entity({
+			name=craftingMachineName, 
+			position={beltEndPosition.x+2*x_offset+(1+crafterLength)*x_column_offset,beltEndPosition.y+2*y_offset+(1+crafterLength)*y_column_offset}, 
+			direction=beltDirection,
+			recipe=recipe.name, 
+			force="player" 
+		});
+
+		local beltpos = 1;
 		for _, ingredient in pairs(recipe.ingredients) do
 			if ingredient.type == "item" then
-				if beltpos > 4 then -- full belts
+				if beltpos == 1 or beltpos > 6 then -- full belts
 					for l=0, beltLength, 1 do
 						-- left side
 						game.surfaces[1].create_entity({
@@ -200,12 +214,13 @@ function SetupCrafterLayout(recipe, beltName, beltEndPosition, beltDirection)
 						name=undergroundBeltName, 
 						position={beltEndPosition.x-beltpos*x_column_offset,beltEndPosition.y-beltpos*y_column_offset}, 
 						direction=beltDirection,
+						type="output",
 						force="player" 
 					});
 					game.surfaces[1].create_entity({
 						name="stack-inserter", 
-						position={beltEndPosition.x+(2+crafterLength)*x_offset-beltpos*x_column_offset,beltEndPosition.y+(2+crafterLength)*y_offset-beltpos*y_column_offset}, 
-						direction=beltDirection,
+						position={beltEndPosition.x+(1+crafterLength)*x_offset-beltpos*x_column_offset,beltEndPosition.y+(1+crafterLength)*y_offset-beltpos*y_column_offset}, 
+						direction=Direction.Opposite(beltDirection),
 						force="player" 
 					});
 
@@ -222,19 +237,75 @@ function SetupCrafterLayout(recipe, beltName, beltEndPosition, beltDirection)
 						name=undergroundBeltName, 
 						position={beltEndPosition.x+beltpos*x_column_offset,beltEndPosition.y+beltpos*y_column_offset}, 
 						direction=beltDirection,
+						type="output",
 						force="player" 
 					});
 					game.surfaces[1].create_entity({
 						name="stack-inserter", 
-						position={beltEndPosition.x+(2+crafterLength)*x_offset+beltpos*x_column_offset,beltEndPosition.y+(2+crafterLength)*y_offset+beltpos*y_column_offset}, 
-						direction=beltDirection,
+						position={beltEndPosition.x+(1+crafterLength)*x_offset+beltpos*x_column_offset,beltEndPosition.y+(1+crafterLength)*y_offset+beltpos*y_column_offset}, 
+						direction=Direction.Opposite(beltDirection),
 						force="player" 
 					});
 				end
 
 				beltpos = beltpos + 1;
-				if beltpos == 5 then
-					beltpos = 6;
+				if beltpos == 2 then
+					-- left
+					game.surfaces[1].create_entity({
+						name="stack-inserter", 
+						position={beltEndPosition.x+(3)*x_offset-beltpos*x_column_offset,beltEndPosition.y+(3)*y_offset-beltpos*y_column_offset}, 
+						direction=Direction.Left(beltDirection),
+						force="player" 
+					});
+					game.surfaces[1].create_entity({
+						name="medium-electric-pole", 
+						position={beltEndPosition.x+(2)*x_offset-beltpos*x_column_offset,beltEndPosition.y+(2)*y_offset-beltpos*y_column_offset}, 
+						direction=beltDirection,
+						force="player" 
+					});
+					-- right
+					game.surfaces[1].create_entity({
+						name="stack-inserter", 
+						position={beltEndPosition.x+(3)*x_offset+beltpos*x_column_offset,beltEndPosition.y+(3)*y_offset+beltpos*y_column_offset}, 
+						direction=Direction.Right(beltDirection),
+						force="player" 
+					});
+					game.surfaces[1].create_entity({
+						name="medium-electric-pole", 
+						position={beltEndPosition.x+(2)*x_offset+beltpos*x_column_offset,beltEndPosition.y+(2)*y_offset+beltpos*y_column_offset}, 
+						direction=beltDirection,
+						force="player" 
+					});
+
+					beltpos = 3;
+				elseif beltpos == 6 then
+					game.surfaces[1].create_entity({
+						name="stack-inserter", 
+						position={beltEndPosition.x+(3)*x_offset-beltpos*x_column_offset,beltEndPosition.y+(3)*y_offset-beltpos*y_column_offset}, 
+						direction=Direction.Right(beltDirection),
+						force="player" 
+					});
+					game.surfaces[1].create_entity({
+						name="medium-electric-pole", 
+						position={beltEndPosition.x+(2)*x_offset-beltpos*x_column_offset,beltEndPosition.y+(2)*y_offset-beltpos*y_column_offset}, 
+						direction=beltDirection,
+						force="player" 
+					});
+					-- right
+					game.surfaces[1].create_entity({
+						name="stack-inserter", 
+						position={beltEndPosition.x+(3)*x_offset+beltpos*x_column_offset,beltEndPosition.y+(3)*y_offset+beltpos*y_column_offset}, 
+						direction=Direction.Left(beltDirection),
+						force="player" 
+					});
+					game.surfaces[1].create_entity({
+						name="medium-electric-pole", 
+						position={beltEndPosition.x+(2)*x_offset+beltpos*x_column_offset,beltEndPosition.y+(2)*y_offset+beltpos*y_column_offset}, 
+						direction=beltDirection,
+						force="player" 
+					});
+
+					beltpos = 7;
 				end
 			else
 			end
@@ -243,36 +314,60 @@ function SetupCrafterLayout(recipe, beltName, beltEndPosition, beltDirection)
 		-- output inserters
 		-- left
 		game.surfaces[1].create_entity({
-			name="stack-inserter", 
-			position={beltEndPosition.x+2*x_offset-1*x_column_offset,beltEndPosition.y+2*y_offset-1*y_column_offset}, 
-			direction=beltDirectionRight, 
-			force="player" 
-		});
-		game.surfaces[1].create_entity({
-			name="stack-inserter", 
-			position={beltEndPosition.x+2*x_offset+1*x_column_offset,beltEndPosition.y+2*y_offset+1*y_column_offset}, 
-			direction=beltDirectionLeft, 
+			name="long-handed-inserter", 
+			position={beltEndPosition.x+1*x_offset-2*x_column_offset,beltEndPosition.y+1*y_offset-2*y_column_offset}, 
+			direction=Direction.Right(beltDirection), 
 			force="player" 
 		});
 		-- right
-	elseif string.match(recipe.name, "furnace") then
-	elseif recipe.name == "oil-refinery" then
-	elseif recipe.name == "chemical-plant" then
-	elseif recipe.name == "rocket-silo" then
+		game.surfaces[1].create_entity({
+			name="long-handed-inserter", 
+			position={beltEndPosition.x+1*x_offset+2*x_column_offset,beltEndPosition.y+1*y_offset+2*y_column_offset}, 
+			direction=Direction.Left(beltDirection), 
+			force="player" 
+		});
+	elseif string.match(craftingMachineName, "furnace") then
+	elseif craftingMachineName == "oil-refinery" then
+	elseif craftingMachineName == "chemical-plant" then
+	elseif craftingMachineName == "rocket-silo" then
     end
 end
 
-function getBestAvailableAssembler()
+function getNumberofBeltsNeeded(recipe)
+	local ingredientCount = 0;
+	for _, ingredient in pairs(recipe.ingredients) do
+		ingredientCount = ingredientCount + 1;
+	end
+	return ingredientCount;
+end
+
+function getUndergroundBeltNameFromBeltName(beltName)
+	if beltName == "transport-belt" then
+		return "underground-belt";
+	elseif beltName == "fast-transport-belt" then
+		return "fast-underground-belt";
+	elseif beltName == "express-transport-belt" then
+		return "express-underground-belt";
+	end
+end
+
+function getBestAvailableAssembler(recipeToMake)
+	local ingredientCount = 0;
+	for _, ingredient in pairs(recipeToMake.ingredients) do
+		ingredientCount = ingredientCount + 1;
+	end
+	local assembler = "";
 	for _, recipe in pairs(recipes) do
 		if recipe.name == "assembling-machine-3" then 
-			return "assembling-machine-3";
-		elseif recipe.name == "assembling-machine-2" then
-			return "assembling-machine-2";
-		elseif recipe.name == "assembling-machine-1" then
-			return "assembling-machine-1";
+			assembler = "assembling-machine-3";
+		elseif recipe.name == "assembling-machine-2" and ingredientCount <= 4 and (assembler == "" or assembler == "assembling-machine-1") then
+			assembler = "assembling-machine-2";
+		elseif recipe.name == "assembling-machine-1" and assembler == "" and ingredientCount <= 2 then
+			assembler = "assembling-machine-1";
 		end
 	end
-	return "assembling-machine-1";
+	debug("Assembler Selected: "..assembler);
+	return assembler;
 end
 
 function getBestAvailableSmelter()
@@ -289,15 +384,24 @@ function getBestAvailableSmelter()
 end
 
 function EntityPrototype(entityName)
-	return game.entity_prototypes[1][entityName];
+	for _, entity in pairs(game.entity_prototypes) do
+		if entity.name == entityName then
+			debug("Entity Prototype:"..entity.name);
+			return entity;
+		end
+	end
+	debug("Cannot find Entity Prototype!");
+	return nil;
 end
 
 function getEntityWidth(entityName)
-	return math.abs(EntityPrototype(entityName).drawing_box.left_top.x - EntityPrototype(entityName).drawing_box.bottom_right.x);
+	local entity = EntityPrototype(entityName);
+	return math.abs(entity.selection_box.left_top.x - entity.selection_box.right_bottom.x);
 end
 
 function getEntityHeight(entityName)
-	return math.abs(EntityPrototype(entityName).drawing_box.left_top.y - EntityPrototype(entityName).drawing_box.bottom_right.y);
+	local entity = EntityPrototype(entityName);
+	return math.abs(entity.selection_box.left_top.y - entity.selection_box.right_bottom.y);
 end
 
 function onResearchFinish(event)	
@@ -363,6 +467,7 @@ function getResearchableTech()
 	-- https://lua-api.factorio.com/latest/LuaForce.html#LuaForce.technologies 
 	-- https://lua-api.factorio.com/latest/LuaTechnology.html
 	-- get researchable technologies, ordered by most beneficial first, benfit is weighted by first increased production types, then enhancements. Tech that is not researchable (research type is not produced yet) is also filtered out.
+	local i = 1;
 	for _, technology in pairs(player.force.technologies) do
 		debug("Technology: "..technology.name..", Enabled: "..(technology.enabled and 'true' or 'false')..", Researched: "..(technology.researched and 'true' or 'false')..", Valid: "..(technology.valid and 'true' or 'false'));
 		if technology.enabled == true and technology.researched == false then -- enabled = can be researched
