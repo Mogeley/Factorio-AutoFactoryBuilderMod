@@ -75,6 +75,11 @@ function onTick(event)
 	end
 end
 
+function debug(msg)
+	player.print(msg);
+	LOGGER.log(msg);
+end
+
 function newSaturatedBelt(recipe, beltName, beltEndPosition, beltDirection)
 	-- determine items per minute to saturate belt
 	local saturatedItemRate = beltRate[beltName];
@@ -408,10 +413,7 @@ function onResearchFinish(event)
 	recipes = getRecipes();
 end
 
-function debug(msg)
-	player.print(msg);
-	LOGGER.log(msg);
-end
+
 
 function SetupStartingArea()
 	-- clear all ore in 200 x 200 area
