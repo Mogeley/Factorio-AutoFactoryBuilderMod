@@ -25,4 +25,23 @@ function EntityProperties.AssemblySpeed(assemblerName)
     return assemblerSpeed[assemblerSpeed];
 end
 
+function EntityProperties.InserterRate(inserterName)
+    local burnerRate = 35.4; -- 0.59 items/sec
+    local normalRate = 49.8; -- 0.83 items/sec
+    local longRate = 69;     -- 1.15 items/sec
+    local fastRate = 138.6;  -- 2.31 items/sec
+    local stackBonus = 12;   -- TODO: change based on current research - for now assume full research
+    local otherBonus = 3;    -- TODO: change based on current research - for now assume full research
+
+    local inserterRate = {}; -- items/minute - these change based on research bonuses
+    inserterRate["burner-inserter"] = burnerRate * otherBonus;
+    inserterRate["inserter"] = normalRate * otherBonus;
+    inserterRate["fast-inserter"] = fastRate * otherBonus;
+    inserterRate["filter-inserter"] = fastRate * otherBonus;
+    inserterRate["stack-inserter"] = fastRate * stackBonus;
+    inserterRate["stack-filter-inserter"] = fastRate * stackBonus;
+    inserterRate["long-handed-inserter"] = longRate * otherBonus;
+    return inserterRate[inserterName];
+end
+
 return EntityProperties;

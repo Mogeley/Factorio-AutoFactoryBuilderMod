@@ -12,24 +12,24 @@ function CraftingPlan:New(recipe, beltName, beltEndPosition, beltDirection)
         saturatedItemRate = EntityProperties.BeltRate(beltName),
         bestCrafterType = self.getbestCrafterType(),
         recipes = Recipes.getAll(),
-        itemRate = 0,
-        numberOfCrafters = 1,
-        crafterDepth = 1000,
-        crafterWidth = 1
+        itemRate = 0,               -- items/minute - crafting rate for one assembler
+        numberOfCrafters = 1,       -- number of assemblers needed to achieve saturated rate
+        crafterArrayDepth = 1000,   -- crafterArrayDepth is the maximum number of crafters that can be built in a row per saturated belt.
+        crafterArrayWidth = 1       -- crafterArrayWidth is the number of Crafter Rows Needed to produce the needed itemRate
     }
 
-    this.itemRate = 60 / recipe.energy / EntityProperties.AssemblySpeed(bestCrafterType); -- items/minute
+    this.itemRate = 60 / recipe.energy / EntityProperties.AssemblySpeed(bestCrafterType); -- items/minute - crafting rate for one assembler
     this.numberOfCrafters = roundUp(this.saturatedItemRate / this.itemRate);
 
 	-- calculate the number of crafters in a row can be placed before items on supply belt are used
 	for _, ingredient in pairs(recipe.ingredients) do
 		local ingredientsPerMinute = this.itemRate * ingredient.amount;
 		local temp = math.floor(saturatedItemRate / ingredientsPerMinute);
-		if temp < this.crafterDepth then -- crafterDepth is the maximum number of crafters that can be built in a row per saturated belt.
-			this.crafterDepth = temp;
+		if temp < this.crafterArrayDepth then -- crafterArrayDepth is the maximum number of crafters that can be built in a row per saturated belt.
+			this.crafterArrayDepth = temp;
 		end
 	end
-    this.crafterWidth = roundUp(this.numberOfCrafters / (this.crafterDepth * 2));
+    this.crafterArrayWidth = roundUp(this.numberOfCrafters / (this.crafterArrayDepth * 2));
     
 
     -- *** Begin Methods ***
@@ -103,6 +103,8 @@ function CraftingPlan:New(recipe, beltName, beltEndPosition, beltDirection)
         end
         return "stone-furnace";
     end
+
+    return this;
 end
 
 return CraftingPlan;

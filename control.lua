@@ -1,6 +1,7 @@
 -- Logger Usage see: https://github.com/rxi/log.lua
 require 'stdlib/log/logger';
 require 'direction';
+require 'CraftingPlan';
 
 LOGGER = Logger.new('AutoFactoryBuilder', 'AutoFactoryBuilder', true); 
 
@@ -81,41 +82,7 @@ function debug(msg)
 end
 
 function newSaturatedBelt(recipe, beltName, beltEndPosition, beltDirection)
-	-- determine items per minute to saturate belt
-	local saturatedItemRate = beltRate[beltName];
-	local bestCrafterType = "";
-
-	-- determine number of assemblers, smelters, miners, trains, or rockets needed to meet the needed rate
-	if recipe.category == "crafting" or recipe.category == "advanced-crafting" or recipe.category == "crafting-with-fluid" then
-		bestCrafterType = getBestAvailableAssembler(recipe);
-	elseif recipe.category == "smelting" then
-		bestCrafterType = getBestAvailableSmelter(recipe);	
-	elseif recipe.category == "chemistry" then
-		bestCrafterType = "chemical-plant";
-	elseif recipe.category == "oil-processing" then
-		bestCrafterType = "oil-refinery";
-	elseif recipe.category == "rocket-building" then
-		bestCrafterType = "rocket-silo";
-	elseif recipe.category == "centrifuging" then
-		bestCrafterType = "centrifuge";
-	end
-
-	local itemRate = 60 / recipe.energy / assemblerSpeed[bestCrafterType]; -- items/minute
-	local numberOfCrafters = roundUp(saturatedItemRate / itemRate);
-
-	-- get ingredients
-	local ingredients = recipe.ingredients;
-
-	-- calculate the number of crafters in a row can be placed before items on supply belt are used
-	local crafterDepth = 1000;
-	for _, ingredient in pairs(ingredients) do
-		ingredientsPerMinute = itemRate * ingredient.amount;
-		local temp = math.floor(saturatedItemRate / ingredientsPerMinute);
-		if temp < crafterDepth then -- crafterDepth is the maximum number of crafters that can be built in a row per saturated belt.
-			crafterDepth = temp;
-		end
-	end
-	local crafterWidth = roundUp(numberOfCrafters / (crafterDepth * 2));
+	local plan = CraftingPlan:New(recipe, beltName, beltEndPosition, beltDirection);
 
 	SetupCrafterLayout(recipe, bestCrafterType, beltName, beltEndPosition, beltDirection);
 
