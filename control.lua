@@ -2,6 +2,7 @@
 require 'stdlib/log/logger';
 require 'direction';
 require 'CraftingPlan';
+require 'CraftingLayout';
 
 LOGGER = Logger.new('AutoFactoryBuilder', 'AutoFactoryBuilder', true); 
 
@@ -69,7 +70,7 @@ function onTick(event)
 			exploreTick = exploreTick + exploreInterval;
 		end
 		if event.tick > buildTick and build then
-			recipes = getRecipes();
+			--recipes = getRecipes();
 			newSaturatedBelt(getRecipe("satellite"), "transport-belt", {x=0,y=0}, defines.direction.west);
 			build = false;
 		end
@@ -82,9 +83,11 @@ function debug(msg)
 end
 
 function newSaturatedBelt(recipe, beltName, beltEndPosition, beltDirection)
-	local plan = CraftingPlan:New(recipe, beltName, beltEndPosition, beltDirection);
+	local plan = CraftingPlan:New(player, recipe, beltName, beltEndPosition, beltDirection);
+	local layout = CraftingLayout:New(plan, false);
+	layout.Render();
 
-	SetupCrafterLayout(recipe, bestCrafterType, beltName, beltEndPosition, beltDirection);
+	-- SetupCrafterLayout(recipe, bestCrafterType, beltName, beltEndPosition, beltDirection);
 
 	-- create output belts bus to end position and direction
 end
@@ -511,6 +514,10 @@ function roundUp(value)
 	if math.fmod(value,1) > 0 then
 		value = value + 1;
 	end
+	return math.floor(value);
+end
+
+function roundDown(value)
 	return math.floor(value);
 end
 

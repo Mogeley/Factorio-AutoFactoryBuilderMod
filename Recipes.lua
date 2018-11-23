@@ -1,6 +1,6 @@
 Recipes = {}
 
-function getAll()
+function Recipes.getAll(player)
 	-- https://lua-api.factorio.com/latest/LuaForce.html#LuaForce.recipes 
 	-- https://lua-api.factorio.com/latest/LuaRecipe.html
 	local result = {};
@@ -13,7 +13,7 @@ function getAll()
 	return result;
 end
 
-function get(recipeName)
+function Recipes.get(player, recipeName)
 	-- https://lua-api.factorio.com/latest/LuaForce.html#LuaForce.recipes 
 	-- https://lua-api.factorio.com/latest/LuaRecipe.html
 	local result = {};
