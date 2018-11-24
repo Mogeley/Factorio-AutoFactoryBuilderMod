@@ -45,7 +45,7 @@ function EntityProperties.InserterRate(inserterName)
 end
 
 function EntityProperties.EntityPrototype(entityName)
-    debug("Looking for Entity Prototype: "..entityName);
+    --debug("Looking for Entity Prototype: "..entityName);
     for _, entity in pairs(game.entity_prototypes) do
         --debug("Entity Prototype: "..entity.name);
 		if entity.name == entityName then

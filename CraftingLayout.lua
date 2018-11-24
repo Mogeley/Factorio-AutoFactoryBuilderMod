@@ -26,8 +26,9 @@ function CraftingLayout:New(craftingPlan, isLeftSide)
     -- everything is added to the grid is if the grid was northward facing - when rendered everything id moved and rotated ot the proper orientation
 
     -- add crafter to grid
-    this:AddEntityToGrid(this.craftingPlan.bestCrafterType, "crafter", this.outputBeltDistance, 2, defines.direction.north);
+    this:AddEntityToGrid(this.craftingPlan.bestCrafterType, "crafter", this.outputBeltDistance+1, 3, defines.direction.north);
     
+    this:AddEntityToGrid(this.outputInserterType, "inserter", this.outputBeltDistance-1, 2, defines.direction.east);
     this:AddEntityToGrid(this.craftingPlan.beltName, "belt", 0, 0, defines.direction.north);
 
     return this;
@@ -44,10 +45,10 @@ end
 
 function CraftingLayout:AddEntityToGrid(entityName, entityType, x, y, direction)
     local entitySize = CraftingLayout:getEntityWidthHeight(entityName, direction);
-
+    --debug("Entity: "..entityName.." type: "..entityType.." size.x: "..entitySize.x.." size.y: "..entitySize.y)
     local entityMain = true;
-    for i=x, entitySize.x + x-1, 1 do
-        for j=y, entitySize.y + y-1, 1 do
+    for i=x, roundUp(entitySize.x) + x-1, 1 do
+        for j=y, roundUp(entitySize.y) + y-1, 1 do
             if entityMain then
                 self.grid:setCell(i,j,{
                     entityName = entityName,
@@ -89,31 +90,37 @@ end
 function CraftingLayout:Render()
     local tempGrid = self.grid:TranslateToWorldCoordinates(self.craftingPlan.beltEndPosition, Position:New(0,0), self.craftingPlan.beltDirection);
 
-    for i, v in pairs(tempGrid) do
-        for j, v2 in pairs(v) do
+    for i=0, self.grid.width-1, 1  do
+        for j=0, self.grid.height-1, 1 do
             local cell = tempGrid[i][j];
-            if cell.entityType == "inserter" then
-                game.surfaces[1].create_entity({
-                    name=cell.entityName, 
-                    position={i,j}, 
-                    direction=cell.direction,
-                    force="player" 
-                });
-            elseif cell.entityType == "crafter" then
-                game.surfaces[1].create_entity({
-                    name=cel.entityName, 
-                    position={i,j}, 
-                    direction=cell.direction,
-                    recipe=self.craftingPlan.recipe, 
-                    force="player" 
-                });
-            elseif cell.entityType == "belt" then
-                game.surfaces[1].create_entity({
-                    name=cell.entityName, 
-                    position={i,j}, 
-                    direction=cell.direction, 
-                    force="player" 
-                });
+            if cell and cell.entityType and cell.entityName and cell.direction then
+                debug("Entity Type: "..cell.entityType)
+                if cell.entityType == "inserter" then
+                    debug("Rendering Inserter");
+                    game.surfaces[1].create_entity({
+                        name=cell.entityName, 
+                        position={i,j}, 
+                        direction=cell.direction,
+                        force="player" 
+                    });
+                elseif cell.entityType == "crafter" then
+                    debug("Rendering Crafter");
+                    game.surfaces[1].create_entity({
+                        name=cell.entityName, 
+                        position={i,j}, 
+                        direction=cell.direction,
+                        recipe=self.craftingPlan.recipe.name, 
+                        force="player" 
+                    });
+                elseif cell.entityType == "belt" then
+                    debug("Rendering Belt");
+                    game.surfaces[1].create_entity({
+                        name=cell.entityName, 
+                        position={i,j}, 
+                        direction=cell.direction, 
+                        force="player" 
+                    });
+                end
             end
         end
     end

@@ -71,7 +71,7 @@ function onTick(event)
 		end
 		if event.tick > buildTick and build then
 			--recipes = getRecipes();
-			newSaturatedBelt(getRecipe("satellite"), "transport-belt", {x=0,y=0}, defines.direction.west);
+			newSaturatedBelt(getRecipe("satellite"), "transport-belt", {x=0,y=0}, defines.direction.north);
 			build = false;
 		end
 	end
@@ -85,7 +85,7 @@ end
 function newSaturatedBelt(recipe, beltName, beltEndPosition, beltDirection)
 	local plan = CraftingPlan:New(player, recipe, beltName, beltEndPosition, beltDirection);
 	local layout = CraftingLayout:New(plan, false);
-	layout.Render();
+	layout:Render();
 
 	-- SetupCrafterLayout(recipe, bestCrafterType, beltName, beltEndPosition, beltDirection);
 
