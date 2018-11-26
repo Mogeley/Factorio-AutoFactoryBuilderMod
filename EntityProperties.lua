@@ -25,6 +25,17 @@ function EntityProperties.AssemblySpeed(assemblerName)
     return assemblerSpeed[assemblerName];
 end
 
+function EntityProperties.getUndergroundBeltName(beltName)
+	if beltName == "transport-belt" then
+		return "underground-belt";
+	elseif beltName == "fast-transport-belt" then
+		return "fast-underground-belt";
+	elseif beltName == "express-transport-belt" then
+		return "express-underground-belt";
+    end
+    return beltName;
+end
+
 function EntityProperties.InserterRate(inserterName)
     local burnerRate = 35.4; -- 0.59 items/sec
     local normalRate = 49.8; -- 0.83 items/sec

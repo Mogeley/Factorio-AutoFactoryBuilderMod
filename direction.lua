@@ -11,6 +11,7 @@ function Direction.Opposite(direction)
 	elseif direction == defines.direction.west then
 		return defines.direction.east;
 	end
+	return direction;
 end
 
 function Direction.Mirror(direction, axis) -- mirrors a direction perpendicular to the axis
@@ -24,6 +25,7 @@ function Direction.Mirror(direction, axis) -- mirrors a direction perpendicular 
 			return Direction.Opposite(direction);
 		end
 	end
+	return direction;
 end
 
 function Direction.Left(direction)
@@ -36,6 +38,7 @@ function Direction.Left(direction)
 	elseif direction == defines.direction.east then
 		return defines.direction.north;
 	end
+	return direction;
 end
 
 function Direction.Right(direction)
@@ -48,6 +51,7 @@ function Direction.Right(direction)
 	elseif direction == defines.direction.west then
 		return defines.direction.north;
 	end
+	return direction;
 end
 
 function Direction.ToString(direction)

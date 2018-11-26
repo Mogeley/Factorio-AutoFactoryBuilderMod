@@ -71,10 +71,10 @@ function onTick(event)
 		end
 		if event.tick > buildTick and build then
 			--recipes = getRecipes();
-			--newSaturatedBelt(getRecipe("satellite"), "express-transport-belt", {x=0,y=10}, defines.direction.north);
+			newSaturatedBelt(getRecipe("satellite"), "express-transport-belt", {x=0,y=10}, defines.direction.north);
 			--newSaturatedBelt(getRecipe("satellite"), "express-transport-belt", {x=-10,y=0}, defines.direction.east);
 			--newSaturatedBelt(getRecipe("satellite"), "express-transport-belt", {x=0,y=-10}, defines.direction.south);
-			newSaturatedBelt(getRecipe("satellite"), "express-transport-belt", {x=10,y=0}, defines.direction.west);
+			--newSaturatedBelt(getRecipe("satellite"), "express-transport-belt", {x=10,y=0}, defines.direction.west);
 			build = false;
 		end
 	end
@@ -87,9 +87,13 @@ end
 
 function newSaturatedBelt(recipe, beltName, beltEndPosition, beltDirection)
 	local plan = CraftingPlan:New(player, recipe, beltName, beltEndPosition, beltDirection);
+
 	local layout = CraftingLayout:New(plan);
-	layout:Render();
-	layout:Render(true);
+	for i=0, plan.crafterArrayDepth-1, 1 do
+		local offset = Position.Offset(beltEndPosition, beltDirection, i*layout.grid.height)
+		layout:Render(offset);
+		layout:Render(offset, true);
+	end
 
 	-- SetupCrafterLayout(recipe, bestCrafterType, beltName, beltEndPosition, beltDirection);
 
