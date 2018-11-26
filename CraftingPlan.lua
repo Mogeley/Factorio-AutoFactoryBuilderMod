@@ -38,7 +38,7 @@ function CraftingPlan:New(player, recipe, beltName, beltEndPosition, beltDirecti
     return this;
 end
 
-function CraftingPlan:getNumberofBeltsNeeded()
+function CraftingPlan:getIngredientCount()
     local ingredientCount = 0;
     for _, ingredient in pairs(self.recipe.ingredients) do
         ingredientCount = ingredientCount + 1;

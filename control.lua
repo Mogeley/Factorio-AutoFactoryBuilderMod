@@ -71,7 +71,10 @@ function onTick(event)
 		end
 		if event.tick > buildTick and build then
 			--recipes = getRecipes();
-			newSaturatedBelt(getRecipe("satellite"), "transport-belt", {x=0,y=0}, defines.direction.north);
+			--newSaturatedBelt(getRecipe("satellite"), "express-transport-belt", {x=0,y=10}, defines.direction.north);
+			--newSaturatedBelt(getRecipe("satellite"), "express-transport-belt", {x=-10,y=0}, defines.direction.east);
+			--newSaturatedBelt(getRecipe("satellite"), "express-transport-belt", {x=0,y=-10}, defines.direction.south);
+			newSaturatedBelt(getRecipe("satellite"), "express-transport-belt", {x=10,y=0}, defines.direction.west);
 			build = false;
 		end
 	end
@@ -84,8 +87,9 @@ end
 
 function newSaturatedBelt(recipe, beltName, beltEndPosition, beltDirection)
 	local plan = CraftingPlan:New(player, recipe, beltName, beltEndPosition, beltDirection);
-	local layout = CraftingLayout:New(plan, false);
+	local layout = CraftingLayout:New(plan);
 	layout:Render();
+	layout:Render(true);
 
 	-- SetupCrafterLayout(recipe, bestCrafterType, beltName, beltEndPosition, beltDirection);
 
@@ -484,6 +488,22 @@ function hasEnoughOres()
 	return true;
 end
 
+function FillWater(x, y, x2, y2)
+	local tiles = {};
+	for i=x, x2, 1  do
+		for j=y, y2, 1 do
+			local tile = game.surfaces[1].get_tile(i,j);
+			if tile.name == "water" or tile.name == "deepwater" or tile.name == "water-green" or tile.name == "deepwater-green" then
+				table.insert(tiles, {
+					name="dry-dirt",
+					position=tile.position
+				});
+			end
+		end
+	end
+	game.surfaces[1].set_tiles(tiles);
+end
+
 function ClearArea(x, y, x2, y2, type)
 	items = getItemsInArea(x, y, x2, y2, type);
   	for _, item in pairs(items) do
@@ -519,6 +539,16 @@ end
 
 function roundDown(value)
 	return math.floor(value);
+end
+
+function copy(obj, seen)
+	if type(obj) ~= 'table' then return obj end
+	if seen and seen[obj] then return seen[obj] end
+	local s = seen or {}
+	local res = setmetatable({}, getmetatable(obj))
+	s[obj] = res
+	for k, v in pairs(obj) do res[copy(k, s)] = copy(v, s) end
+	return res
 end
 
 -- run this every onTick event
