@@ -20,9 +20,11 @@ LOGGER = Logger.new('AutoFactoryBuilder', 'AutoFactoryBuilder', true);
 local firstTick = true;
 local searchForOre = true;
 local checkNeeds = true;
-local exploreInterval = 1200; -- 1800 = 30 seconds
+local exploreInterval = 1200; -- 1800 = 30 seconds; 60=1 second
 local exploreTick = exploreInterval;
 local buildTick = 600;
+local queueInterval = 60;
+local queueTick = queueInterval;
 local build = true;
 local exploredArea = {{0,0}, {0,0}};
 
@@ -36,6 +38,10 @@ local minStoneCount = 1000000;
 local player;
 
 local recipes;
+local buildQueue = {};
+local buildQueueLength = 0;
+local currentPlan;
+local currentLayout;
 
 local beltRate = {}; -- items per minute
 beltRate["transport-belt"] = 800;
@@ -77,6 +83,10 @@ function onTick(event)
 			--newSaturatedBelt(getRecipe("satellite"), "express-transport-belt", {x=10,y=0}, defines.direction.west);
 			build = false;
 		end
+		if event.tick > queueTick and buildQueueLength > 0 then
+			ProcessQueue();
+			queueTick = queueTick + queueInterval;
+		end
 	end
 end
 
@@ -86,33 +96,50 @@ function debug(msg)
 end
 
 function newSaturatedBelt(recipe, beltName, beltEndPosition, beltDirection)
-	local plan = CraftingPlan:New(player, recipe, beltName, beltEndPosition, beltDirection);
+	currentPlan = CraftingPlan:New(player, recipe, beltName, beltEndPosition, beltDirection);
 
-	debug("plan.crafterArrayWidth: "..plan.crafterArrayWidth);
-	debug("plan.crafterArrayDepth: "..plan.crafterArrayDepth);
+	debug("plan.crafterArrayWidth: "..currentPlan.crafterArrayWidth);
+	debug("plan.crafterArrayDepth: "..currentPlan.crafterArrayDepth);
 
-	local layout = CraftingLayout:New(plan);
+	currentLayout = CraftingLayout:New(currentPlan);
 
-	local widthOffset = beltEndPosition
+	local widthOffset = beltEndPosition;
 	local heightOffset = beltEndPosition;
-	for n=0, 5, 1 do --for n=0, plan.crafterArrayWidth-1, 1 do
+	for n=0, currentPlan.crafterArrayWidth-1, 1 do
 		if n > 0 then
-			widthOffset = Position.Offset(widthOffset, Direction.Left(beltDirection), layout.grid.width*2);
-			widthOffset = Position.Offset(widthOffset, beltDirection, layout.grid.height);
+			widthOffset = Position.Offset(widthOffset, Direction.Left(beltDirection), currentLayout.grid.width*2);
+			widthOffset = Position.Offset(widthOffset, beltDirection, currentLayout.grid.height);
 		end
 		heightOffset = widthOffset;
-		for i=0, plan.crafterArrayDepth-1, 1 do
+		for i=0, currentPlan.crafterArrayDepth-1, 1 do
 			if i > 0 then
-				heightOffset = Position.Offset(heightOffset, Direction.Opposite(beltDirection), layout.grid.height);
+				heightOffset = Position.Offset(heightOffset, Direction.Opposite(beltDirection), currentLayout.grid.height);
 			end
-			layout:Render(heightOffset);
-			layout:Render(heightOffset, true);
+			AddToQueue(currentLayout, heightOffset);
+			--currentLayout:Render(heightOffset);
+			--currentLayout:Render(heightOffset, true);
 		end
 	end
 
-	-- SetupCrafterLayout(recipe, bestCrafterType, beltName, beltEndPosition, beltDirection);
+end
 
-	-- create output belts bus to end position and direction
+function AddToQueue(layout, position)
+	table.insert(buildQueue, {
+		layout = layout,
+		position = copy(position)
+	});
+	buildQueueLength = buildQueueLength + 1;
+end
+
+function ProcessQueue()
+	if buildQueueLength > 0 then
+		debug("Processing Queue with length: "..buildQueueLength);
+		local item = table.remove(buildQueue, 1);
+		buildQueueLength = buildQueueLength - 1;
+		debug("Render at position: "..item.position.x..", "..item.position.y);
+		item.layout:Render(item.position);
+		item.layout:Render(item.position, true);
+	end
 end
 
 function SetupCrafterLayout(recipe, craftingMachineName, beltName, beltEndPosition, beltDirection)

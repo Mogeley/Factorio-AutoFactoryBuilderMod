@@ -171,6 +171,8 @@ function CraftingLayout:Render(offset, flip)
 
     local gridArea = self.grid:getGridExtents(tempGrid);
 
+    Explore(gridArea.x1-30,gridArea.y1-30,gridArea.x2+30,gridArea.y2+30);
+
     ClearArea(gridArea.x1,gridArea.y1,gridArea.x2,gridArea.y2,"");
     FillWater(gridArea.x1,gridArea.y1,gridArea.x2,gridArea.y2);
 

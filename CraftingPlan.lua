@@ -17,7 +17,8 @@ function CraftingPlan:New(player, recipe, beltName, beltEndPosition, beltDirecti
         itemRate = 0,               -- items/minute - crafting rate for one assembler
         numberOfCrafters = 1,       -- number of assemblers needed to achieve saturated rate
         crafterArrayDepth = 1000,   -- crafterArrayDepth is the maximum number of crafters that can be built in a row per saturated belt.
-        crafterArrayWidth = 1       -- crafterArrayWidth is the number of Crafter Rows Needed to produce the needed itemRate
+        crafterArrayWidth = 1,      -- crafterArrayWidth is the number of Crafter Rows Needed to produce the needed itemRate
+        isComplete = false
     }
     setmetatable(this, self);
     
