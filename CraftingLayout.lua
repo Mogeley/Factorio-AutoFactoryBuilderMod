@@ -37,19 +37,19 @@ function CraftingLayout:New(craftingPlan)
             if column == 1 then
                 -- left of crafter
                 this:AddEntityToGrid("stack-inserter", "inserter", 2, crafterSize.y+1, defines.direction.west, "");
-                --this:AddBelt(column);
+                this:AddBelt(column);
             elseif column >= 2 and column <= crafterSize.x + 1 then
                 -- above crafter
                 this:AddEntityToGrid("stack-inserter", "inserter", column + 1, 1, defines.direction.north, "");
-                --this:AddUndergroundBelt(column + 1);
+                this:AddUndergroundBelt(column + 1);
             elseif column == crafterSize.x + 2 then
                 -- right of crafter
                 this:AddEntityToGrid("stack-inserter", "inserter", crafterSize.x + 3, crafterSize.y+1, defines.direction.east, "");
-                --this:AddBelt(column + 2);
+                this:AddBelt(column + 2);
             elseif column == crafterSize.x + 3 then
                 -- right of crafter - long handed inserter
                 this:AddEntityToGrid("long-handed-inserter", "inserter", crafterSize.x + 3, crafterSize.y-1, defines.direction.east, "");
-                --this:AddBelt(column + 2);
+                this:AddBelt(column + 2);
             end
             column = column + 1;
         end
@@ -77,7 +77,7 @@ function CraftingLayout:New(craftingPlan)
     -- add belts
 
     -- add output Belt
-    -- this:AddBelt(0); 
+    this:AddBelt(0); 
 
     -- add power poles
 
@@ -93,19 +93,34 @@ function CraftingLayout:NewGrid(entityName, direction)
     self.grid = Grid:New(width, height);
 end
 
-function CraftingLayout:AddBelt(x)
-    for i=0, self.grid.height-1, 1 do
-        CraftingLayout:AddEntityToGrid(self.craftingPlan.beltName, "belt", x, i, defines.direction.north, "");
+function CraftingLayout:AddBelt(col)
+    for h=0, self.grid.height-1, 1 do
+        self.grid:setCell(col,h,{
+            entityName = self.craftingPlan.beltName,
+            entityType = "belt",
+            direction = defines.direction.north,
+            kind = ""
+        });
     end
 end
 
 function CraftingLayout:AddUndergroundBelt(x)
     local undergroundBelt = EntityProperties.getUndergroundBeltName(self.craftingPlan.beltName);
-    CraftingLayout:AddEntityToGrid(undergroundBelt, "underground-belt", x, 0, defines.direction.north, "output");
-    CraftingLayout:AddEntityToGrid(undergroundBelt, "underground-belt", x, self.grid.height-1, defines.direction.north, "input");
+    self.grid:setCell(x,0,{
+        entityName = undergroundBelt,
+        entityType = "underground-belt",
+        direction = defines.direction.north,
+        kind = "output"
+    });
+    self.grid:setCell(x,self.grid.height-1,{
+        entityName = undergroundBelt,
+        entityType = "underground-belt",
+        direction = defines.direction.north,
+        kind = "input"
+    });
 end
 
-function CraftingLayout:AddEntityToGrid(entityName, entityType, x, y, direction, kind) -- kind: used to designate "input" or "output"
+function CraftingLayout:AddEntityToGrid(entityName, entityType, x, y, direction, kind) -- kind: used to designate "input" or "output" 
     local entitySize = CraftingLayout:getEntityWidthHeight(entityName, direction);
     --debug("Entity: "..entityName.." type: "..entityType.." size.x: "..entitySize.x.." size.y: "..entitySize.y)
     local entityMain = true;

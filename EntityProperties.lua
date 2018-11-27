@@ -60,7 +60,7 @@ function EntityProperties.EntityPrototype(entityName)
     for _, entity in pairs(game.entity_prototypes) do
         --debug("Entity Prototype: "..entity.name);
 		if entity.name == entityName then
-			debug("Entity Prototype:"..entity.name);
+			--debug("Entity Prototype:"..entity.name);
 			return entity;
 		end
 	end
