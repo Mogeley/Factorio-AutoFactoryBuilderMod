@@ -88,11 +88,26 @@ end
 function newSaturatedBelt(recipe, beltName, beltEndPosition, beltDirection)
 	local plan = CraftingPlan:New(player, recipe, beltName, beltEndPosition, beltDirection);
 
+	debug("plan.crafterArrayWidth: "..plan.crafterArrayWidth);
+	debug("plan.crafterArrayDepth: "..plan.crafterArrayDepth);
+
 	local layout = CraftingLayout:New(plan);
-	for i=0, plan.crafterArrayDepth-1, 1 do
-		local offset = Position.Offset(beltEndPosition, beltDirection, i*layout.grid.height)
-		layout:Render(offset);
-		layout:Render(offset, true);
+
+	local widthOffset = beltEndPosition
+	local heightOffset = beltEndPosition;
+	for n=0, 5, 1 do --for n=0, plan.crafterArrayWidth-1, 1 do
+		if n > 0 then
+			widthOffset = Position.Offset(widthOffset, Direction.Left(beltDirection), layout.grid.width*2);
+			widthOffset = Position.Offset(widthOffset, beltDirection, layout.grid.height);
+		end
+		heightOffset = widthOffset;
+		for i=0, plan.crafterArrayDepth-1, 1 do
+			if i > 0 then
+				heightOffset = Position.Offset(heightOffset, Direction.Opposite(beltDirection), layout.grid.height);
+			end
+			layout:Render(heightOffset);
+			layout:Render(heightOffset, true);
+		end
 	end
 
 	-- SetupCrafterLayout(recipe, bestCrafterType, beltName, beltEndPosition, beltDirection);
