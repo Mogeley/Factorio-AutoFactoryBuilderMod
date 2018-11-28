@@ -40,6 +40,8 @@ local player;
 local recipes;
 local buildQueue = {};
 local buildQueueLength = 0;
+local craftingQueue = {};
+local craftingQueueLength = 0;
 local currentPlan;
 local currentLayout;
 
@@ -78,13 +80,15 @@ function onTick(event)
 		if event.tick > buildTick and build then
 			--recipes = getRecipes();
 			--newSaturatedBelt(getRecipe("satellite"), 20, "express-transport-belt", {x=0,y=10}, defines.direction.north);
-			newSaturatedBelt(getRecipe("express-underground-belt"), 50,  "express-transport-belt", {x=-10,y=0}, defines.direction.east);
+			newSaturatedBelt(getRecipe("electronic-circuit"), 1,  "express-transport-belt", {x=-10,y=0}, defines.direction.north);
 			--newSaturatedBelt(getRecipe("satellite"), 20,  "express-transport-belt", {x=0,y=-10}, defines.direction.south);
 			--newSaturatedBelt(getRecipe("express-underground-belt"), 20,  "express-transport-belt", {x=10,y=0}, defines.direction.west);
 			build = false;
 		end
 		if event.tick > queueTick and buildQueueLength > 0 then
-			ProcessQueue();
+			ProcessBuildQueue();
+			queueTick = queueTick + queueInterval;
+		elseif event.tick > queueTick and buildQueueLength == 0 and craftingQueueLength > 0 then
 			queueTick = queueTick + queueInterval;
 		end
 	end
@@ -125,15 +129,22 @@ function newSaturatedBelt(recipe, desiredRate, beltName, beltEndPosition, beltDi
 			if i > 0 then
 				heightOffset = Position.Offset(heightOffset, Direction.Opposite(beltDirection), currentLayout.grid.height);
 			end
-			AddToQueue(currentLayout, heightOffset);
-			--currentLayout:Render(heightOffset);
-			--currentLayout:Render(heightOffset, true);
-		end
-	end
 
+			-- TODO: nodes
+
+			AddToBuildQueue(currentLayout, heightOffset);
+
+		end
+	end	
+	
+	-- add ingredients to craftingQueue - use last input nodes for starting positions
+	--for _, ingredient in pairs(currentPlan.recipe.ingredients) do
+	--	beltoffsetPosition = Position.Offset(heightOffset, Direction.Left(beltDirection), n);
+	--	AddToCraftingQueue(getRecipe(ingredient.name), 0, beltName, beltoffsetPosition, beltDirection);	
+    --end
 end
 
-function AddToQueue(layout, position)
+function AddToBuildQueue(layout, position)
 	table.insert(buildQueue, {
 		layout = layout,
 		position = copy(position)
@@ -141,14 +152,36 @@ function AddToQueue(layout, position)
 	buildQueueLength = buildQueueLength + 1;
 end
 
-function ProcessQueue()
+function ProcessBuildQueue()
 	if buildQueueLength > 0 then
-		debug("Processing Queue with length: "..buildQueueLength);
+		debug("Processing Build Queue with length: "..buildQueueLength);
 		local item = table.remove(buildQueue, 1);
 		buildQueueLength = buildQueueLength - 1;
 		debug("Render at position: "..item.position.x..", "..item.position.y);
+
+		-- TODO: nodes
+
 		item.layout:Render(item.position);
 		item.layout:Render(item.position, true);
+	end
+end
+
+function AddToCraftingQueue(recipe, craftingMachineName, beltName, beltEndPosition, beltDirection)
+	table.insert(craftingQueue, {
+		recipe = copy(recipe), 
+		craftingMachineName = copy(craftingMachineName), 
+		beltName = copy(beltName), 
+		beltEndPosition = copy(beltEndPosition), 
+		beltDirection = copy(beltDirection)
+	});
+	craftingQueueLength = craftingQueueLength + 1;
+end
+
+function ProcessCraftingQueue()
+	if craftingQueueLength > 0 then
+		debug("Processing Crafting Queue with length: "..craftingQueueLength);
+		local item = table.remove(craftingQueue, 1);
+		craftingQueueLength = craftingQueueLength - 1;
 	end
 end
 

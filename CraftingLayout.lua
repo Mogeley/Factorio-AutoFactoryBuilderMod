@@ -11,7 +11,8 @@ function CraftingLayout:New(craftingPlan)
         craftingPlan = craftingPlan,
         outputInserterType = "",
         outputBeltDistance = 3, -- set with type
-        grid = {}
+        grid = {},
+        nodes = {}
     }
     setmetatable(this, self);
     
@@ -28,6 +29,14 @@ function CraftingLayout:New(craftingPlan)
     this:AddEntityToGrid(this.craftingPlan.bestCrafterType, "crafter", this.outputBeltDistance+1, 3, defines.direction.north, "");
     this:AddEntityToGrid(this.outputInserterType, "inserter", this.outputBeltDistance-1, 2, defines.direction.east, "");
 
+    -- output node
+    table.insert(this.node, {
+        type = "output",
+        entityName = copy(this.craftingPlan.recipe.name),
+        position = Position:New(0,2),
+        direction = defines.direction.north
+    });
+
     -- add ingredient inserters
     local ingredientCount = this.craftingPlan:getIngredientCount();
     local crafterSize = this:getEntityWidthHeight(this.craftingPlan.bestCrafterType, this.craftingPlan.beltDirection, "");
@@ -38,18 +47,22 @@ function CraftingLayout:New(craftingPlan)
                 -- left of crafter
                 this:AddEntityToGrid("stack-inserter", "inserter", 2, crafterSize.y+1, defines.direction.west, "");
                 this:AddBelt(column);
+                this:AddInputNode(1, crafterSize.y+1, this.craftingPlan.recipe.ingredient[i-1].name);
             elseif column >= 2 and column <= crafterSize.x + 1 then
                 -- above crafter
                 this:AddEntityToGrid("stack-inserter", "inserter", column + 1, 1, defines.direction.north, "");
                 this:AddUndergroundBelt(column + 1);
+                this:AddInputNode(column + 1, 0, this.craftingPlan.recipe.ingredient[i-1].name);
             elseif column == crafterSize.x + 2 then
                 -- right of crafter
                 this:AddEntityToGrid("stack-inserter", "inserter", crafterSize.x + 3, crafterSize.y+1, defines.direction.east, "");
                 this:AddBelt(column + 2);
+                this:AddInputNode(column + 2, crafterSize.y+1, this.craftingPlan.recipe.ingredient[i-1].name);
             elseif column == crafterSize.x + 3 then
                 -- right of crafter - long handed inserter
                 this:AddEntityToGrid("long-handed-inserter", "inserter", crafterSize.x + 3, crafterSize.y-1, defines.direction.east, "");
                 this:AddBelt(column + 2);
+                this:AddInputNode(column + 2, crafterSize.y-1, this.craftingPlan.recipe.ingredient[i-1].name);
             end
             column = column + 1;
         end
@@ -60,14 +73,17 @@ function CraftingLayout:New(craftingPlan)
                 -- above crafter
                 this:AddEntityToGrid("stack-inserter", "inserter", column + 1, 1, defines.direction.north, "");
                 this:AddUndergroundBelt(column + 1);
+                this:AddInputNode(column + 1, 0, this.craftingPlan.recipe.ingredient[i-1].name);
             elseif column == crafterSize.x + 2 then
                 -- right of crafter
                 this:AddEntityToGrid("stack-inserter", "inserter", crafterSize.x + 2, crafterSize.y+1, defines.direction.east, "");
                 this:AddBelt(column + 2);
+                this:AddInputNode(column + 2, crafterSize.y+1, this.craftingPlan.recipe.ingredient[i-1].name);
             elseif column == crafterSize.x + 3 then
                 -- right of crafter - long handed inserter
                 this:AddEntityToGrid("long-handed-inserter", "inserter", crafterSize.x + 2, crafterSize.y-1, defines.direction.east, "");
                 this:AddBelt(column + 2);
+                this:AddInputNode(column + 2, crafterSize.y-1, this.craftingPlan.recipe.ingredient[i-1].name);
             end
             column = column + 1;
         end
@@ -91,6 +107,15 @@ function CraftingLayout:NewGrid(entityName, direction)
     local height = entitySize.y + 4;
 
     self.grid = Grid:New(width, height);
+end
+
+function CraftingLayout:AddInputNode(x,y,entityName)
+    table.insert(this.node, {
+        type = "input",
+        entityName = copy(entityName),
+        position = Position:New(x,y),
+        direction = defines.direction.north
+    });
 end
 
 function CraftingLayout:AddBelt(col)
@@ -169,13 +194,14 @@ end
 function CraftingLayout:Render(offset, flip)
     local tempGrid = self.grid:TranslateToWorldCoordinates(offset, self.craftingPlan.beltDirection, flip);
 
+    -- TODO: translate nodes and return nodes
+
     local gridArea = self.grid:getGridExtents(tempGrid);
 
     Explore(gridArea.x1-30,gridArea.y1-30,gridArea.x2+30,gridArea.y2+30);
 
     ClearArea(gridArea.x1,gridArea.y1,gridArea.x2,gridArea.y2,"");
     FillWater(gridArea.x1,gridArea.y1,gridArea.x2,gridArea.y2);
-
 
     for i=0, self.grid.width-1, 1  do
         for j=0, self.grid.height-1, 1 do
