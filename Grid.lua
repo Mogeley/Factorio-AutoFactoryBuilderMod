@@ -32,48 +32,50 @@ function Grid:TranslateToWorldCoordinates(worldPosition, direction, flip)
         for y=0, self.height-1, 1 do
             local tx = 0;
             local ty = 0;
-            temp[x][y] = copy(self.grid[x][y]); -- need to create a copy to prevent mutation of grid.
+            if self.grid[x][y].entityName ~= nil then
+                temp[x][y] = copy(self.grid[x][y]); -- need to create a copy to prevent mutation of grid.
 
-            if direction == defines.direction.north then
-                if flip then
-                    tx = worldPosition.x - x;
-                    temp[x][y].direction = Direction.Mirror(temp[x][y].direction, defines.direction.north);
-                else
-                    tx = x + worldPosition.x;
+                if direction == defines.direction.north then
+                    if flip then
+                        tx = worldPosition.x - x;
+                        temp[x][y].direction = Direction.Mirror(temp[x][y].direction, defines.direction.north);
+                    else
+                        tx = x + worldPosition.x;
+                    end
+                    ty = y + worldPosition.y;
+                elseif direction == defines.direction.east then
+                    temp[x][y].direction = Direction.Right(temp[x][y].direction);
+                    tx = worldPosition.x-y;
+                    if flip then
+                        ty = worldPosition.y - x;
+                        temp[x][y].direction = Direction.Mirror(temp[x][y].direction, defines.direction.east);
+                    else
+                        ty = x + worldPosition.y;
+                    end
+                elseif direction == defines.direction.south then
+                    temp[x][y].direction = Direction.Opposite(temp[x][y].direction);
+                    if flip then
+                        tx = x + worldPosition.x;
+                        temp[x][y].direction = Direction.Mirror(temp[x][y].direction, defines.direction.south);
+                    else
+                        tx = worldPosition.x - x;
+                    end
+                    ty = worldPosition.y-y;
+                elseif direction == defines.direction.west then
+                    temp[x][y].direction = Direction.Left(temp[x][y].direction);
+                    tx = y + worldPosition.x;
+                    if flip then
+                        ty = x + worldPosition.y;
+                        temp[x][y].direction = Direction.Mirror(temp[x][y].direction, defines.direction.west);
+                    else
+                        ty = worldPosition.y-x;
+                    end
                 end
-                ty = y + worldPosition.y;
-            elseif direction == defines.direction.east then
-                temp[x][y].direction = Direction.Right(temp[x][y].direction);
-                tx = worldPosition.x-y;
-                if flip then
-                    ty = worldPosition.y - x;
-                    temp[x][y].direction = Direction.Mirror(temp[x][y].direction, defines.direction.east);
-                else
-                    ty = x + worldPosition.y;
-                end
-            elseif direction == defines.direction.south then
-                temp[x][y].direction = Direction.Opposite(temp[x][y].direction);
-                if flip then
-                    tx = x + worldPosition.x;
-                    temp[x][y].direction = Direction.Mirror(temp[x][y].direction, defines.direction.south);
-                else
-                    tx = worldPosition.x - x;
-                end
-                ty = worldPosition.y-y;
-            elseif direction == defines.direction.west then
-                temp[x][y].direction = Direction.Left(temp[x][y].direction);
-                tx = y + worldPosition.x;
-                if flip then
-                    ty = x + worldPosition.y;
-                    temp[x][y].direction = Direction.Mirror(temp[x][y].direction, defines.direction.west);
-                else
-                    ty = worldPosition.y-x;
-                end
+
+                -- set x , y coordinates
+                temp[x][y].x = tx;
+                temp[x][y].y = ty;
             end
-
-            -- set x , y coordinates
-            temp[x][y].x = tx;
-            temp[x][y].y = ty;
         end
     end
     return temp;

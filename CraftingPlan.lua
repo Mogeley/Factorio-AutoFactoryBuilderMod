@@ -4,10 +4,11 @@ require 'Recipes';
 
 CraftingPlan = {}
 CraftingPlan.__index = CraftingPlan;
-function CraftingPlan:New(player, recipe, beltName, beltEndPosition, beltDirection)
+function CraftingPlan:New(player, recipe, desiredRate, beltName, beltEndPosition, beltDirection)
     local this = {
         player = player,
         recipe = recipe,
+        desiredRate = desiredRate, -- desired items per minute to produce, use 0 to use saturatedItemRate.
         beltName = beltName,
         beltEndPosition = beltEndPosition,
         beltDirection = beltDirection,
@@ -22,9 +23,13 @@ function CraftingPlan:New(player, recipe, beltName, beltEndPosition, beltDirecti
     }
     setmetatable(this, self);
     
+    if this.desiredRate == 0 then
+        this.desiredRate = this.saturatedItemRate;
+    end
+
     this.bestCrafterType = EntityProperties.getbestCrafterType(this.recipe, this.recipes);
     this.itemRate = 60 / this.recipe.energy / EntityProperties.AssemblySpeed(this.bestCrafterType); -- items/minute - crafting rate for one assembler
-    this.numberOfCrafters = roundUp(this.saturatedItemRate / this.itemRate);
+    this.numberOfCrafters = roundUp(this.desiredRate / this.itemRate);
 
 	-- calculate the number of crafters in a row can be placed before items on supply belt are used
 	for _, ingredient in pairs(this.recipe.ingredients) do
@@ -33,7 +38,10 @@ function CraftingPlan:New(player, recipe, beltName, beltEndPosition, beltDirecti
 		if temp < this.crafterArrayDepth then -- crafterArrayDepth is the maximum number of crafters that can be built in a row per saturated belt.
 			this.crafterArrayDepth = temp;
 		end
-	end
+    end
+    if this.crafterArrayDepth < 1 then
+        this.crafterArrayDepth = 1;
+    end
     this.crafterArrayWidth = roundUp(this.numberOfCrafters / (this.crafterArrayDepth * 2));
    
     return this;

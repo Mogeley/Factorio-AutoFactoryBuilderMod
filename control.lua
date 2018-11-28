@@ -77,10 +77,10 @@ function onTick(event)
 		end
 		if event.tick > buildTick and build then
 			--recipes = getRecipes();
-			newSaturatedBelt(getRecipe("satellite"), "express-transport-belt", {x=0,y=10}, defines.direction.north);
-			--newSaturatedBelt(getRecipe("satellite"), "express-transport-belt", {x=-10,y=0}, defines.direction.east);
-			--newSaturatedBelt(getRecipe("satellite"), "express-transport-belt", {x=0,y=-10}, defines.direction.south);
-			--newSaturatedBelt(getRecipe("satellite"), "express-transport-belt", {x=10,y=0}, defines.direction.west);
+			--newSaturatedBelt(getRecipe("satellite"), 20, "express-transport-belt", {x=0,y=10}, defines.direction.north);
+			newSaturatedBelt(getRecipe("express-underground-belt"), 50,  "express-transport-belt", {x=-10,y=0}, defines.direction.east);
+			--newSaturatedBelt(getRecipe("satellite"), 20,  "express-transport-belt", {x=0,y=-10}, defines.direction.south);
+			--newSaturatedBelt(getRecipe("express-underground-belt"), 20,  "express-transport-belt", {x=10,y=0}, defines.direction.west);
 			build = false;
 		end
 		if event.tick > queueTick and buildQueueLength > 0 then
@@ -90,13 +90,23 @@ function onTick(event)
 	end
 end
 
+function onGuiOpened(event)
+	-- https://lua-api.factorio.com/latest/events.html#on_gui_opened
+	if event.gui_type == defines.gui_type.entity then
+		if event.entity and event.entity.name == "express-transport-belt" then
+			debug("Belt Gui Opened!");
+			--player.gui.top.add{type="button", name="selectProduction",choose-elem-button{elem_type = "entity"}};
+		end
+	end
+end
+
 function debug(msg)
 	player.print(msg);
 	LOGGER.log(msg);
 end
 
-function newSaturatedBelt(recipe, beltName, beltEndPosition, beltDirection)
-	currentPlan = CraftingPlan:New(player, recipe, beltName, beltEndPosition, beltDirection);
+function newSaturatedBelt(recipe, desiredRate, beltName, beltEndPosition, beltDirection)
+	currentPlan = CraftingPlan:New(player, recipe, desiredRate, beltName, beltEndPosition, beltDirection);
 
 	debug("plan.crafterArrayWidth: "..currentPlan.crafterArrayWidth);
 	debug("plan.crafterArrayDepth: "..currentPlan.crafterArrayDepth);
@@ -108,7 +118,7 @@ function newSaturatedBelt(recipe, beltName, beltEndPosition, beltDirection)
 	for n=0, currentPlan.crafterArrayWidth-1, 1 do
 		if n > 0 then
 			widthOffset = Position.Offset(widthOffset, Direction.Left(beltDirection), currentLayout.grid.width*2);
-			widthOffset = Position.Offset(widthOffset, beltDirection, currentLayout.grid.height);
+			widthOffset = Position.Offset(widthOffset, beltDirection, (currentPlan.crafterArrayDepth-1)*currentLayout.grid.height);
 		end
 		heightOffset = widthOffset;
 		for i=0, currentPlan.crafterArrayDepth-1, 1 do
@@ -599,3 +609,5 @@ end
 
 -- run this every onTick event
 script.on_event(defines.events.on_tick, onTick);
+
+script.on_event(defines.events.on_gui_opened, onGuiOpened)
